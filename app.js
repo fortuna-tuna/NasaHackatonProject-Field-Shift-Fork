@@ -2152,14 +2152,6 @@
     $("collapseInspectorBtn").addEventListener("click", () => toggleInspector(true));
     $("inspectorExpandTab").addEventListener("click", () => toggleInspector(false));
 
-    $("railWorkspaceBtn").addEventListener("click", () => {
-      if (state.activeView !== "workspace") {
-        setWorkspaceView("workspace");
-        toggleSidebar(false);
-        return;
-      }
-      toggleSidebar(!shell.classList.contains("sidebar-collapsed"));
-    });
     $("railMapBtn").addEventListener("click", () => setWorkspaceView("workspace"));
     $("railPortfolioBtn").addEventListener("click", () => setWorkspaceView("portfolio"));
     $("railCropsBtn").addEventListener("click", () => setWorkspaceView("crops"));
