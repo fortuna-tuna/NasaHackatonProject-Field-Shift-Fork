@@ -2218,6 +2218,7 @@
     renderRotationTab(field, recSim, tradSim);
     renderImpactTab(field, recSim, tradSim);
     renderReportTab(field, recSim, tradSim);
+    renderScienceModal();
   }
 
   function setActiveTab(tabName) {
