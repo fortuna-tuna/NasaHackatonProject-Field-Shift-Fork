@@ -35,6 +35,7 @@
   const state = {
     fields: [],
     activeFieldId: null,
+    activeView: "workspace",
     activeTab: "climate",
     sortBy: "default",
     basemap: "sat",
@@ -69,6 +70,9 @@
   let drawLayerGroup = null;
   let searchDebounce = null;
   let mapClickLocked = false;
+  let pendingMapClickTimer = null;
+  let activeProbeSeq = 0;
+  let probePopup = null;
 
   const $ = (id) => document.getElementById(id);
 
@@ -195,7 +199,7 @@
       if (raw) {
         const parsed = JSON.parse(raw);
         if (Array.isArray(parsed)) {
-          custom = parsed.filter((f) => f && f.id && Array.isArray(f.polygon));
+          custom = parsed.filter((f) => f && f.id && !String(f.id).startsWith("custom_sample_") && Array.isArray(f.polygon));
         }
       }
     } catch (_err) {
@@ -777,6 +781,14 @@
       updateMicroStripCoords(ev.latlng.lat, ev.latlng.lng);
     });
 
+    map.on("movestart zoomstart dragstart", () => {
+      if (pendingMapClickTimer) {
+        clearTimeout(pendingMapClickTimer);
+        pendingMapClickTimer = null;
+      }
+      activeProbeSeq += 1;
+    });
+
     map.on("moveend zoomend", () => {
       updateMicroStripCoords();
       if (state.showZones) renderZonesOverlay();
@@ -789,10 +801,26 @@
         return;
       }
       if (mapClickLocked) return;
-      handleQuickMapSample(ev.latlng.lat, ev.latlng.lng);
+      if (pendingMapClickTimer) {
+        clearTimeout(pendingMapClickTimer);
+        pendingMapClickTimer = null;
+      }
+      const clickLat = ev.latlng.lat;
+      const clickLon = ev.latlng.lng;
+      pendingMapClickTimer = setTimeout(() => {
+        pendingMapClickTimer = null;
+        if (!state.isDrawing && !mapClickLocked) {
+          probeMapPoint(clickLat, clickLon);
+        }
+      }, 260);
     });
 
     map.on("dblclick", (ev) => {
+      if (pendingMapClickTimer) {
+        clearTimeout(pendingMapClickTimer);
+        pendingMapClickTimer = null;
+      }
+      activeProbeSeq += 1;
       if (!state.isDrawing) return;
       L.DomEvent.stopPropagation(ev);
       if (state.drawPoints.length >= 3) {
@@ -808,44 +836,46 @@
     renderZonesOverlay();
   }
 
-  async function handleQuickMapSample(lat, lon) {
+  async function probeMapPoint(lat, lon) {
+    if (!map) return;
     const cleanLat = Number(lat.toFixed(4));
     const cleanLon = Number(lon.toFixed(4));
-    const keepZoom = Math.max(map.getZoom(), 11);
-    map.panTo([cleanLat, cleanLon], { animate: true });
-    if (map.getZoom() < 11) map.setZoom(keepZoom);
+    const seq = ++activeProbeSeq;
 
-    state.telemetryLoading = true;
-    renderTelemetryStatus();
+    if (!probePopup) {
+      probePopup = L.popup({ className: "probe-popup", maxWidth: 260 });
+    }
+    probePopup
+      .setLatLng([cleanLat, cleanLon])
+      .setContent(
+        `<div class="probe-title">Point Telemetry Probe</div>
+         <div class="probe-coords">${cleanLat.toFixed(4)}°, ${cleanLon.toFixed(4)}°</div>
+         <div style="color:var(--ink-muted);font-size:11px;">Querying Open-Meteo &amp; SoilGrids...</div>`
+      )
+      .openOn(map);
 
     const bundle = await fetchRawBundle(cleanLat, cleanLon);
-    const poly = createRectPolygon(cleanLat, cleanLon, 36);
-    const idxNum = state.fields.filter((f) => !f.isDemo).length + 1;
-    const sampleField = buildCustomFieldObject(`Sample Parcel #${idxNum}`, cleanLat, cleanLon, poly, bundle);
+    if (seq !== activeProbeSeq || state.activeView !== "workspace") return;
 
-    const existingSampleIdx = state.fields.findIndex((f) => f.id.startsWith("custom_sample_") && f.name.startsWith("Sample Parcel"));
-    if (existingSampleIdx !== -1 && state.fields.length > 6) {
-      sampleField.id = state.fields[existingSampleIdx].id;
-      sampleField.name = state.fields[existingSampleIdx].name;
-      state.fields[existingSampleIdx] = sampleField;
-    } else {
-      sampleField.id = `custom_sample_${Date.now()}`;
-      state.fields.unshift(sampleField);
-    }
+    const temp = bundle.meteo?.current?.temperature_2m != null ? `${Math.round(bundle.meteo.current.temperature_2m)}°C` : "--";
+    const rainSum = Array.isArray(bundle.meteo?.daily?.precipitation_sum)
+      ? `${bundle.meteo.daily.precipitation_sum.reduce((a, b) => a + (Number(b) || 0), 0).toFixed(1)} mm`
+      : "--";
+    const smTop = bundle.meteo?.hourly?.soil_moisture_0_to_1cm?.[0] != null
+      ? `${Math.round(Number(bundle.meteo.hourly.soil_moisture_0_to_1cm[0]) * 100)}%`
+      : "--";
+    const phVal = bundle.soilGrids?.ph != null ? Number(bundle.soilGrids.ph).toFixed(1) : "--";
 
-    state.activeFieldId = sampleField.id;
-    state.overrides = null;
-    state.planSequence = [...sampleField.selectedPlan];
-    state.telemetryLoading = false;
-    state.liveCurrent = bundle.meteo?.current || null;
-    state.liveForecast = bundle.meteo?.daily || null;
-    state.liveSoilGrids = bundle.soilGrids || null;
-    state.livePowerStats = bundle.power || null;
-
-    saveFieldsToStorage();
-    renderAll();
-    renderFieldPolygons(false);
-    showToast(`Sampled NASA + Open-Meteo telemetry at ${cleanLat.toFixed(2)}, ${cleanLon.toFixed(2)}`);
+    probePopup.setContent(
+      `<div class="probe-title">NASA / ECMWF Point Probe</div>
+       <div class="probe-coords">${cleanLat.toFixed(4)}°, ${cleanLon.toFixed(4)}°</div>
+       <div class="probe-grid">
+         <div class="probe-cell"><span>Temp Now</span><strong>${temp}</strong></div>
+         <div class="probe-cell"><span>7d Precip</span><strong>${rainSum}</strong></div>
+         <div class="probe-cell"><span>0–1 cm Moist.</span><strong>${smTop}</strong></div>
+         <div class="probe-cell"><span>SoilGrids pH</span><strong>${phVal}</strong></div>
+       </div>`
+    );
   }
 
   function startDrawingPolygon(redrawId) {
@@ -983,9 +1013,26 @@
       poly.on("click", (ev) => {
         if (state.isDrawing) return;
         L.DomEvent.stopPropagation(ev);
+        if (pendingMapClickTimer) {
+          clearTimeout(pendingMapClickTimer);
+          pendingMapClickTimer = null;
+        }
+        activeProbeSeq += 1;
         mapClickLocked = true;
-        setTimeout(() => { mapClickLocked = false; }, 120);
-        selectField(f.id, true);
+        setTimeout(() => { mapClickLocked = false; }, 350);
+        if (state.activeFieldId !== f.id) {
+          selectField(f.id, true);
+        }
+      });
+
+      poly.on("dblclick", () => {
+        if (pendingMapClickTimer) {
+          clearTimeout(pendingMapClickTimer);
+          pendingMapClickTimer = null;
+        }
+        activeProbeSeq += 1;
+        mapClickLocked = true;
+        setTimeout(() => { mapClickLocked = false; }, 350);
       });
 
       if (zoom >= 9) {
@@ -1058,10 +1105,18 @@
       marker.on("click", (ev) => {
         if (state.isDrawing) return;
         L.DomEvent.stopPropagation(ev);
+        if (pendingMapClickTimer) {
+          clearTimeout(pendingMapClickTimer);
+          pendingMapClickTimer = null;
+        }
+        activeProbeSeq += 1;
+        mapClickLocked = true;
+        setTimeout(() => { mapClickLocked = false; }, 350);
         if (z.id) {
           selectField(z.id, true);
         } else {
-          handleQuickMapSample(z.lat, z.lon);
+          map.setView([z.lat, z.lon], Math.max(map.getZoom(), 9), { animate: true });
+          probeMapPoint(z.lat, z.lon);
         }
       });
 
@@ -2042,7 +2097,34 @@
       });
     };
 
+    const setWorkspaceView = (viewName) => {
+      state.activeView = viewName;
+      $("workspaceBody").classList.toggle("is-hidden", viewName !== "workspace");
+      $("portfolioView").classList.toggle("is-hidden", viewName !== "portfolio");
+      $("cropLibraryView").classList.toggle("is-hidden", viewName !== "crops");
+      $("scienceView").classList.toggle("is-hidden", viewName !== "science");
+
+      const navMap = {
+        workspace: "railMapBtn",
+        portfolio: "railPortfolioBtn",
+        crops: "railCropsBtn",
+        science: "railScienceBtn"
+      };
+      setTopNavActive(navMap[viewName] || "railMapBtn");
+
+      if (viewName === "portfolio") renderPortfolioModal();
+      else if (viewName === "crops") renderCropLibraryModal();
+      else if (viewName === "science") renderScienceModal();
+      else if (viewName === "workspace") {
+        setTimeout(() => {
+          if (map) map.invalidateSize();
+          redrawVisibleCharts();
+        }, 40);
+      }
+    };
+
     const toggleSidebar = (collapsed) => {
+      if (state.activeView !== "workspace") setWorkspaceView("workspace");
       shell.classList.toggle("sidebar-collapsed", collapsed);
       setTimeout(() => {
         if (map) map.invalidateSize();
@@ -2060,56 +2142,45 @@
 
     $("collapseSidebarBtn").addEventListener("click", () => toggleSidebar(true));
     $("sidebarExpandTab").addEventListener("click", () => {
+      if (state.activeView !== "workspace") {
+        setWorkspaceView("workspace");
+        toggleSidebar(false);
+        return;
+      }
       toggleSidebar(!shell.classList.contains("sidebar-collapsed"));
     });
     $("collapseInspectorBtn").addEventListener("click", () => toggleInspector(true));
     $("inspectorExpandTab").addEventListener("click", () => toggleInspector(false));
 
     $("railWorkspaceBtn").addEventListener("click", () => {
+      if (state.activeView !== "workspace") {
+        setWorkspaceView("workspace");
+        toggleSidebar(false);
+        return;
+      }
       toggleSidebar(!shell.classList.contains("sidebar-collapsed"));
     });
-    $("railMapBtn").addEventListener("click", () => {
-      document.querySelectorAll(".modal-backdrop").forEach((m) => m.classList.add("is-hidden"));
-      setTopNavActive("railMapBtn");
-    });
-    $("railPortfolioBtn").addEventListener("click", () => {
-      renderPortfolioModal();
-      $("portfolioModal").classList.remove("is-hidden");
-      setTopNavActive("railPortfolioBtn");
-    });
-    $("railCropsBtn").addEventListener("click", () => {
-      renderCropLibraryModal();
-      $("cropLibraryModal").classList.remove("is-hidden");
-      setTopNavActive("railCropsBtn");
-    });
-    $("railScienceBtn").addEventListener("click", () => {
-      renderScienceModal();
-      $("scienceModal").classList.remove("is-hidden");
-      setTopNavActive("railScienceBtn");
-    });
+    $("railMapBtn").addEventListener("click", () => setWorkspaceView("workspace"));
+    $("railPortfolioBtn").addEventListener("click", () => setWorkspaceView("portfolio"));
+    $("railCropsBtn").addEventListener("click", () => setWorkspaceView("crops"));
+    $("railScienceBtn").addEventListener("click", () => setWorkspaceView("science"));
     $("railPrintBtn").addEventListener("click", triggerPrintReport);
 
-    const closeAllModals = () => {
-      document.querySelectorAll(".modal-backdrop").forEach((m) => m.classList.add("is-hidden"));
-      setTopNavActive("railMapBtn");
-    };
+    $("backToMapPortfolioBtn").addEventListener("click", () => setWorkspaceView("workspace"));
+    $("backToMapCropsBtn").addEventListener("click", () => setWorkspaceView("workspace"));
+    $("backToMapScienceBtn").addEventListener("click", () => setWorkspaceView("workspace"));
 
-    $("closePortfolioBtn").addEventListener("click", closeAllModals);
-    $("closeCropLibraryBtn").addEventListener("click", closeAllModals);
-    $("closeScienceBtn").addEventListener("click", closeAllModals);
-
-    document.querySelectorAll(".modal-backdrop").forEach((backdrop) => {
-      backdrop.addEventListener("click", (ev) => {
-        if (ev.target === backdrop && backdrop.id !== "nameFieldModal") {
-          closeAllModals();
-        }
-      });
+    $("nameFieldModal").addEventListener("click", (ev) => {
+      if (ev.target === $("nameFieldModal")) {
+        pendingDrawnData = null;
+        $("nameFieldModal").classList.add("is-hidden");
+      }
     });
 
     $("portfolioTableBody").addEventListener("click", (ev) => {
       const tr = ev.target.closest("tr[data-jump-field]");
       if (!tr) return;
-      closeAllModals();
+      setWorkspaceView("workspace");
       selectField(tr.dataset.jumpField, true);
     });
 
@@ -2125,6 +2196,11 @@
       const delBtn = ev.target.closest("[data-del-id]");
       if (delBtn) {
         ev.stopPropagation();
+        if (pendingMapClickTimer) {
+          clearTimeout(pendingMapClickTimer);
+          pendingMapClickTimer = null;
+        }
+        activeProbeSeq += 1;
         const delId = delBtn.dataset.delId;
         state.fields = state.fields.filter((f) => f.id !== delId);
         if (state.activeFieldId === delId) {
@@ -2189,8 +2265,12 @@
       }
     });
 
-    $("btnDrawField").addEventListener("click", () => startDrawingPolygon(null));
+    $("btnDrawField").addEventListener("click", () => {
+      if (state.activeView !== "workspace") setWorkspaceView("workspace");
+      startDrawingPolygon(null);
+    });
     $("redrawPolygonBtn").addEventListener("click", () => {
+      if (state.activeView !== "workspace") setWorkspaceView("workspace");
       const field = getActiveField();
       if (field) startDrawingPolygon(field.id);
     });
@@ -2209,6 +2289,7 @@
 
     $("btnImportGeo").addEventListener("click", () => $("geoImportInput").click());
     $("geoImportInput").addEventListener("change", (ev) => {
+      if (state.activeView !== "workspace") setWorkspaceView("workspace");
       handleGeoJsonImport(ev.target.files?.[0]);
       ev.target.value = "";
     });

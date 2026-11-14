@@ -86,7 +86,7 @@
       </div>
     </header>
 
-    <div class="workspace-body">
+    <div id="workspaceBody" class="workspace-body">
       <main class="map-stage">
         <div id="globalMap" class="global-map"></div>
 
@@ -175,7 +175,7 @@
         </div>
 
         <div id="mapIdleHint" class="map-idle-hint">
-          Click map to inspect live NASA telemetry or draw parcel polygons.
+          Click empty map to probe coordinates · Use Draw Field to add parcels
         </div>
 
         <button type="button" id="inspectorExpandTab" class="edge-expand-tab edge-expand-right is-hidden" title="Show Field Inspector">
@@ -186,7 +186,7 @@
 
       <aside id="inspectorDrawer" class="inspector-drawer" aria-label="Field agronomy inspector">
         <div class="inspector-header">
-          <div class="inspector-title-block">
+          <div class="inspector-header-top">
             <div class="inspector-name-line">
               <h2 id="inspectorFieldName" class="inspector-field-name">Cherkasy Agro Field #1</h2>
               <button type="button" id="editFieldNameBtn" class="icon-btn-sm" title="Rename parcel" aria-label="Rename parcel">
@@ -194,24 +194,27 @@
               </button>
               <span id="inspectorRiskBadge" class="risk-pill risk-mod">Score --</span>
             </div>
-            <p id="inspectorFieldMeta" class="inspector-field-meta">132.4 ha &middot; Cherkasy Oblast, Ukraine &middot; Chernozem</p>
-          </div>
-          <div class="inspector-header-actions">
-            <button type="button" id="redrawPolygonBtn" class="icon-btn" title="Redraw field boundary on map" aria-label="Redraw boundary">
-              <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="4" height="4" rx="1"/><rect x="17" y="3" width="4" height="4" rx="1"/><rect x="17" y="17" width="4" height="4" rx="1"/><rect x="3" y="17" width="4" height="4" rx="1"/><line x1="7" y1="5" x2="17" y2="5"/><line x1="19" y1="7" x2="19" y2="17"/><line x1="17" y1="19" x2="7" y2="19"/><line x1="5" y1="17" x2="5" y2="7"/></svg>
-            </button>
-            <button type="button" id="syncTelemetryBtn" class="icon-btn" title="Refresh live NASA POWER, Open-Meteo &amp; SoilGrids" aria-label="Refresh satellite sync">
-              <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 16h5v5"/></svg>
-            </button>
-            <button type="button" id="exportPlanBtn" class="icon-btn" title="Export field rotation JSON" aria-label="Export JSON">
-              <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-            </button>
-            <button type="button" id="printPlanBtn" class="icon-btn" title="Print 1-Page Field Report" aria-label="Print report">
-              <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><path d="M6 9V3a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v6"/><rect x="6" y="14" width="12" height="8" rx="1"/></svg>
-            </button>
             <button type="button" id="collapseInspectorBtn" class="icon-btn" title="Collapse inspector" aria-label="Collapse inspector">
               <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
             </button>
+          </div>
+          <div class="inspector-header-bottom">
+            <p id="inspectorFieldMeta" class="inspector-field-meta">132.4 ha &middot; Cherkasy Oblast, Ukraine &middot; Chernozem</p>
+            <div class="inspector-header-actions">
+              <button type="button" id="redrawPolygonBtn" class="btn-outline-xs" title="Edit or redraw this parcel's boundary on map" aria-label="Redraw boundary">
+                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.375 2.625a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4Z"/></svg>
+                <span>Redraw</span>
+              </button>
+              <button type="button" id="syncTelemetryBtn" class="icon-btn" title="Refresh live NASA POWER, Open-Meteo &amp; SoilGrids" aria-label="Refresh satellite sync">
+                <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 16h5v5"/></svg>
+              </button>
+              <button type="button" id="exportPlanBtn" class="icon-btn" title="Export field rotation JSON" aria-label="Export JSON">
+                <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              </button>
+              <button type="button" id="printPlanBtn" class="icon-btn" title="Print 1-Page Field Report" aria-label="Print report">
+                <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><path d="M6 9V3a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v6"/><rect x="6" y="14" width="12" height="8" rx="1"/></svg>
+              </button>
+            </div>
           </div>
         </div>
 
@@ -548,94 +551,98 @@
         </div>
       </aside>
     </div>
-  </div>
 
-  <div id="portfolioModal" class="modal-backdrop is-hidden" role="dialog" aria-modal="true" aria-labelledby="portfolioModalTitle">
-    <div class="modal-card modal-wide">
-      <div class="modal-head">
-        <div>
-          <h2 id="portfolioModalTitle" class="modal-title">Farm Portfolio Comparison</h2>
-          <p class="modal-sub">All active &amp; benchmark parcels aggregated over the 2027–2030 cycle</p>
+    <section id="portfolioView" class="workspace-page is-hidden" aria-label="Farm Portfolio Comparison">
+      <div class="workspace-page-inner">
+        <div class="page-hero-head">
+          <div>
+            <h1 class="page-title">Farm Portfolio Comparison</h1>
+            <p class="page-sub">All active &amp; benchmark parcels aggregated over the 2027–2030 cycle</p>
+          </div>
+          <button type="button" id="backToMapPortfolioBtn" class="btn-outline-sm">Back to Map Workspace</button>
         </div>
-        <button type="button" id="closePortfolioBtn" class="icon-btn" aria-label="Close">&times;</button>
+        <div id="portfolioSummaryStrip" class="portfolio-kpis"></div>
+        <div class="page-surface-card">
+          <div class="table-scroll">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Field</th>
+                  <th>Region</th>
+                  <th>Area (ha)</th>
+                  <th>Soil Moisture</th>
+                  <th>4-Yr Rotation</th>
+                  <th>Water Gain</th>
+                  <th>Portfolio Profit &Delta;</th>
+                </tr>
+              </thead>
+              <tbody id="portfolioTableBody"></tbody>
+            </table>
+          </div>
+        </div>
       </div>
-      <div id="portfolioSummaryStrip" class="portfolio-kpis"></div>
-      <div class="table-scroll">
-        <table class="data-table">
-          <thead>
-            <tr>
-              <th>Field</th>
-              <th>Region</th>
-              <th>Area (ha)</th>
-              <th>Soil Moisture</th>
-              <th>4-Yr Rotation</th>
-              <th>Water Gain</th>
-              <th>Portfolio Profit &Delta;</th>
-            </tr>
-          </thead>
-          <tbody id="portfolioTableBody"></tbody>
-        </table>
-      </div>
-    </div>
-  </div>
+    </section>
 
-  <div id="cropLibraryModal" class="modal-backdrop is-hidden" role="dialog" aria-modal="true" aria-labelledby="cropModalTitle">
-    <div class="modal-card modal-wide">
-      <div class="modal-head">
-        <div>
-          <h2 id="cropModalTitle" class="modal-title">12-Crop Agronomic Reference Matrix</h2>
-          <p class="modal-sub">Water demand, rooting depth, nitrogen fixation, biological heat limit &amp; sowing calendar</p>
+    <section id="cropLibraryView" class="workspace-page is-hidden" aria-label="12-Crop Agronomic Reference Matrix">
+      <div class="workspace-page-inner">
+        <div class="page-hero-head">
+          <div>
+            <h1 class="page-title">12-Crop Agronomic Reference Matrix</h1>
+            <p class="page-sub">Water demand, rooting depth, nitrogen fixation, biological heat limit &amp; sowing calendar</p>
+          </div>
+          <button type="button" id="backToMapCropsBtn" class="btn-outline-sm">Back to Map Workspace</button>
         </div>
-        <button type="button" id="closeCropLibraryBtn" class="icon-btn" aria-label="Close">&times;</button>
+        <div class="page-surface-card">
+          <div class="page-filter-row">
+            <input type="text" id="cropSearchInput" class="input-ctrl" placeholder="Filter crops by name or family...">
+            <select id="cropSeasonFilter" class="input-ctrl" style="max-width:220px;">
+              <option value="all">All Drought Ratings</option>
+              <option value="high">High Drought Tolerance (&ge;70)</option>
+              <option value="winter">Overwintering Crops</option>
+              <option value="legume">Nitrogen Fixers (+N)</option>
+            </select>
+          </div>
+          <div class="table-scroll">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Crop</th>
+                  <th>Window</th>
+                  <th>Water (mm)</th>
+                  <th>Root (cm)</th>
+                  <th>N Bal (kg/ha)</th>
+                  <th>Heat Limit</th>
+                  <th>Drought Score</th>
+                  <th>Est. Margin/ha</th>
+                </tr>
+              </thead>
+              <tbody id="cropMatrixTableBody"></tbody>
+            </table>
+          </div>
+        </div>
       </div>
-      <div class="modal-filter-row">
-        <input type="text" id="cropSearchInput" class="input-ctrl" placeholder="Filter crops by name or family...">
-        <select id="cropSeasonFilter" class="input-ctrl" style="max-width:190px;">
-          <option value="all">All Drought Ratings</option>
-          <option value="high">High Drought Tolerance (&ge;70)</option>
-          <option value="winter">Overwintering Crops</option>
-          <option value="legume">Nitrogen Fixers (+N)</option>
-        </select>
-      </div>
-      <div class="table-scroll modal-table-max">
-        <table class="data-table">
-          <thead>
-            <tr>
-              <th>Crop</th>
-              <th>Window</th>
-              <th>Water (mm)</th>
-              <th>Root (cm)</th>
-              <th>N Bal (kg/ha)</th>
-              <th>Heat Limit</th>
-              <th>Drought Score</th>
-              <th>Est. Margin/ha</th>
-            </tr>
-          </thead>
-          <tbody id="cropMatrixTableBody"></tbody>
-        </table>
-      </div>
-    </div>
-  </div>
+    </section>
 
-  <div id="scienceModal" class="modal-backdrop is-hidden" role="dialog" aria-modal="true" aria-labelledby="scienceModalTitle">
-    <div class="modal-card modal-wide">
-      <div class="modal-head">
-        <div>
-          <h2 id="scienceModalTitle" class="modal-title">NASA Earth Telemetry &amp; Scoring Methodology</h2>
-          <p class="modal-sub">Live open science pipelines driving parcel soil-water &amp; rotation analytics</p>
+    <section id="scienceView" class="workspace-page is-hidden" aria-label="NASA Earth Telemetry & Scoring Methodology">
+      <div class="workspace-page-inner">
+        <div class="page-hero-head">
+          <div>
+            <h1 class="page-title">NASA Earth Telemetry &amp; Scoring Methodology</h1>
+            <p class="page-sub">Live open science pipelines driving parcel soil-water &amp; rotation analytics</p>
+          </div>
+          <button type="button" id="backToMapScienceBtn" class="btn-outline-sm">Back to Map Workspace</button>
         </div>
-        <button type="button" id="closeScienceBtn" class="icon-btn" aria-label="Close">&times;</button>
+        <div id="scienceSourcesGrid" class="science-grid"></div>
+        <div class="formula-card page-formula-card">
+          <h4>Multi-Year Agronomic Scoring Engine</h4>
+          <p>For each year <em>t</em> &isin; {1, 2, 3, 4}, Field Shift models available root-zone moisture balance:</p>
+          <p class="formula-line">
+            W<sub>t</sub> = min(AWC, W<sub>t&minus;1</sub> + P<sub>eff</sub> &minus; ET<sub>crop</sub>(t) + &Delta;W<sub>cover</sub> + &Delta;W<sub>tillage</sub>)
+          </p>
+          <p>Simultaneously tracking nitrogen carryover N<sub>t</sub> (kg/ha), host-pathogen return intervals (blocking consecutive Sclerotinia hosts like <code>Sunflower &rarr; Soybean &rarr; Rapeseed</code>), and flowering heat-stress penalties whenever NASA <code>T2M_MAX</code> exceeds each crop's biological ceiling.</p>
+        </div>
       </div>
-      <div id="scienceSourcesGrid" class="science-grid"></div>
-      <div class="formula-card">
-        <h4>Multi-Year Agronomic Scoring Engine</h4>
-        <p>For each year <em>t</em> &isin; {1, 2, 3, 4}, Field Shift models available root-zone moisture balance:</p>
-        <p class="formula-line">
-          W<sub>t</sub> = min(AWC, W<sub>t&minus;1</sub> + P<sub>eff</sub> &minus; ET<sub>crop</sub>(t) + &Delta;W<sub>cover</sub> + &Delta;W<sub>tillage</sub>)
-        </p>
-        <p>Simultaneously tracking nitrogen carryover N<sub>t</sub> (kg/ha), host-pathogen return intervals (blocking consecutive Sclerotinia hosts like <code>Sunflower &rarr; Soybean &rarr; Rapeseed</code>), and flowering heat-stress penalties whenever NASA <code>T2M_MAX</code> exceeds each crop's biological ceiling.</p>
-      </div>
-    </div>
+    </section>
   </div>
 
   <div id="nameFieldModal" class="modal-backdrop is-hidden" role="dialog" aria-modal="true" aria-labelledby="nameModalTitle">
