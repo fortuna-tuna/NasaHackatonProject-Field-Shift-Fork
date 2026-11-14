@@ -4,33 +4,45 @@ window.FIELD_SHIFT_DATA = {
       id: "SMAP_L4",
       code: "NASA SMAP L4",
       title: "Root-Zone & Surface Soil Moisture",
+      title_ua: "Вологість кореневмісного та поверхневого шарів ґрунту",
       resolution: "9 km · Daily Assimilation",
+      resolution_ua: "9 км · Щоденна асиміляція",
       parameter: "GWETROOT / GWETPROF",
-      role: "Measures plant-available moisture at 0–100 cm and 100–200 cm so multi-year rotations do not stack deep subsoil extractors consecutively."
+      role: "Measures plant-available moisture at 0–100 cm and 100–200 cm so multi-year rotations do not stack deep subsoil extractors consecutively.",
+      role_ua: "Вимірює доступну рослинам вологу на глибинах 0–100 см та 100–200 см, запобігаючи виснаженню глибоких горизонтів."
     },
     {
       id: "NASA_POWER",
       code: "NASA POWER AG",
       title: "Agroclimatology Solar & Thermal Archive",
+      title_ua: "Агрокліматичний архів сонячної та теплової радіації",
       resolution: "0.5° × 0.625° · Live REST API",
+      resolution_ua: "0.5° × 0.625° · Live REST API",
       parameter: "T2M_MAX / PRECTOTCORR / GWETROOT",
-      role: "Provides coordinate-specific precipitation totals, flowering heat-stress thresholds, and root moisture baselines for any parcel worldwide."
+      role: "Provides coordinate-specific precipitation totals, flowering heat-stress thresholds, and root moisture baselines for any parcel worldwide.",
+      role_ua: "Надає точні координатні суми опадів, пороги теплового стресу цвітіння та базові лінії вологості для будь-якої ділянки світу."
     },
     {
       id: "OPEN_METEO_SOIL",
       code: "Open-Meteo Agro & SoilGrids",
       title: "Live 7-Day Field Weather & ISRIC Soil",
+      title_ua: "Прогноз погоди на 7 днів та ґрунти ISRIC",
       resolution: "250 m Soil · Hourly Forecast",
+      resolution_ua: "250 м ґрунт · Погодинний прогноз",
       parameter: "soil_moisture_27_to_81cm / clay / sand / soc",
-      role: "Supplies real-time topsoil temperature, sowing-window rainfall, FAO ET0, and ISRIC SoilGrids v2.0 clay, sand, pH, and organic carbon."
+      role: "Supplies real-time topsoil temperature, sowing-window rainfall, FAO ET0, and ISRIC SoilGrids v2.0 clay, sand, pH, and organic carbon.",
+      role_ua: "Забезпечує дані температури орного шару в реальному часі, опади вікон сівби, FAO ET0 та показники глини, піску, pH і гумусу з ISRIC SoilGrids v2.0."
     },
     {
       id: "GPM_ECOSTRESS",
       code: "GPM IMERG & ECOSTRESS",
       title: "Rainfall Shifts & Evapotranspiration Gap",
+      title_ua: "Зсуви опадів та дефіцит евапотранспірації",
       resolution: "70 m – 10 km · Multi-Sensor",
+      resolution_ua: "70 м – 10 км · Мультисенсор",
       parameter: "PRECTOT vs. EVPTRNS / LST",
-      role: "Quantifies monthly rain-minus-ET deficits across growing seasons to align crop sowing and harvest calendars with true moisture windows."
+      role: "Quantifies monthly rain-minus-ET deficits across growing seasons to align crop sowing and harvest calendars with true moisture windows.",
+      role_ua: "Кількісно оцінює щомісячний дефіцит «опади мінус ET» протягом сезону для узгодження календаря сівби та збирання з вікнами вологи."
     }
   ],
 
@@ -513,8 +525,11 @@ window.FIELD_SHIFT_DATA = {
     {
       id: "ua_cherkasy",
       name: "Cherkasy Agro Field #1",
+      name_ua: "Черкаси Агро — Поле №1",
       region: "Cherkasy Oblast",
+      region_ua: "Черкаська область",
       country: "Ukraine",
+      country_ua: "Україна",
       iso: "UA",
       isDemo: true,
       lat: 49.362,
@@ -548,6 +563,7 @@ window.FIELD_SHIFT_DATA = {
         monthlyTempMaxC: [0, 2, 8, 16, 23, 27, 30, 29, 23, 14, 6, 1]
       },
       humanDiagnosis: "NASA SMAP indicates deep 100–200 cm moisture is depleted (28%) following sunflower, with a -165 mm annual rain-ET deficit. Shifting Year 1 to shallow field pea + winter wheat restores subsoil reserves.",
+      humanDiagnosis_ua: "Дані NASA SMAP вказують на виснаження запасів вологи на глибині 100–200 см (28%) після соняшнику з дефіцитом опадів -165 мм. Перехід у Рік 1 на мілкокореневий горох + озиму пшеницю відновлює запаси вологи.",
       traditionalRotation: ["corn", "sunflower", "winter_wheat", "sunflower"],
       presets: {
         balanced: ["field_pea", "winter_wheat", "chickpea", "sorghum"],
@@ -559,8 +575,11 @@ window.FIELD_SHIFT_DATA = {
     {
       id: "ua_odesa",
       name: "Budjak Steppe Block",
+      name_ua: "Буджацький степовий блок",
       region: "Odesa Oblast",
+      region_ua: "Одеська область",
       country: "Ukraine",
+      country_ua: "Україна",
       iso: "UA",
       isDemo: true,
       lat: 46.165,
@@ -594,6 +613,7 @@ window.FIELD_SHIFT_DATA = {
         monthlyTempMaxC: [3, 5, 10, 17, 24, 29, 33, 32, 25, 17, 9, 4]
       },
       humanDiagnosis: "High aridity (-315 mm water balance) and 38 extreme heat days (>32°C). Drought-tolerant chickpea, early winter barley, and C4 sorghum replace high-risk rainfed corn.",
+      humanDiagnosis_ua: "Висока посушливість (дефіцит вологи -315 мм) та 38 днів екстремальної спеки (>32°C). Посухостійкий нут, ранній озимий ячмінь та сорго замінюють ризиковану богарну кукурудзу.",
       traditionalRotation: ["sunflower", "winter_wheat", "sunflower", "corn"],
       presets: {
         balanced: ["chickpea", "winter_wheat", "lentil", "sorghum"],
@@ -605,8 +625,11 @@ window.FIELD_SHIFT_DATA = {
     {
       id: "us_kansas",
       name: "Ogallala Plains Parcel",
+      name_ua: "Ділянка рівнин Огаллала",
       region: "Kansas",
+      region_ua: "Канзас",
       country: "USA",
+      country_ua: "США",
       iso: "US",
       isDemo: true,
       lat: 37.782,
@@ -640,6 +663,7 @@ window.FIELD_SHIFT_DATA = {
         monthlyTempMaxC: [6, 9, 15, 20, 26, 32, 35, 34, 29, 21, 13, 6]
       },
       humanDiagnosis: "High evaporative demand (740 mm ET) stresses Ogallala groundwater reserves. Rotating Wheat–Sorghum–Chickpea cuts water draw by ~40% vs. continuous corn.",
+      humanDiagnosis_ua: "Високе випаровування (740 мм ET) виснажує підземний горизонт Огаллала. Чергування пшениця–сорго–нут скорочує забір води на ~40% порівняно з беззмінною кукурудзою.",
       traditionalRotation: ["corn", "corn", "soybean", "corn"],
       presets: {
         balanced: ["chickpea", "winter_wheat", "sorghum", "soybean"],
@@ -651,8 +675,11 @@ window.FIELD_SHIFT_DATA = {
     {
       id: "es_andalusia",
       name: "Guadalquivir Olive-Grain",
+      name_ua: "Гвадалквівір — оливо-зернова зона",
       region: "Andalusia",
+      region_ua: "Андалусія",
       country: "Spain",
+      country_ua: "Іспанія",
       iso: "ES",
       isDemo: true,
       lat: 37.824,
@@ -686,6 +713,7 @@ window.FIELD_SHIFT_DATA = {
         monthlyTempMaxC: [15, 17, 21, 24, 28, 34, 38, 37, 32, 25, 19, 15]
       },
       humanDiagnosis: "Severe organic carbon depletion (1.4% SOM) and 38°C July peaks. Cool-season winter wheat and chickpea avoid summer clay cracking while rebuilding humus.",
+      humanDiagnosis_ua: "Критичне виснаження органічного вуглецю (1.4% гумусу) та пікові температури липня до 38°C. Озима пшениця та нут прохолодного сезону уникають розтріскування глини і відновлюють гумус.",
       traditionalRotation: ["winter_wheat", "sunflower", "winter_wheat", "sunflower"],
       presets: {
         balanced: ["chickpea", "winter_wheat", "lentil", "sorghum"],
@@ -697,8 +725,11 @@ window.FIELD_SHIFT_DATA = {
     {
       id: "br_matogrosso",
       name: "Sorriso Cerrado Pivot",
+      name_ua: "Соррізу — Серадо круговий полив",
       region: "Mato Grosso",
+      region_ua: "Мату-Гросу",
       country: "Brazil",
+      country_ua: "Бразилія",
       iso: "BR",
       isDemo: true,
       lat: -12.565,
@@ -732,6 +763,7 @@ window.FIELD_SHIFT_DATA = {
         monthlyTempMaxC: [31, 31, 31, 32, 32, 33, 34, 36, 35, 33, 32, 31]
       },
       humanDiagnosis: "Dry-season heat (35°C) threatens late Safrinha corn. Deep-rooted sorghum + cover mulch after soybean stabilizes dry-month moisture.",
+      humanDiagnosis_ua: "Спека сухого сезону (35°C) загрожує пізній кукурудзі сафрінья. Глибококореневе сорго + мульчуючий покрив після сої стабілізують запаси вологи в посушливі місяці.",
       traditionalRotation: ["soybean", "corn", "soybean", "corn"],
       presets: {
         balanced: ["soybean", "sorghum", "chickpea", "corn"],
@@ -743,8 +775,11 @@ window.FIELD_SHIFT_DATA = {
     {
       id: "ke_nakuru",
       name: "Rift Valley Highland Plot",
+      name_ua: "Ділянка високогір'я Рифтової долини",
       region: "Nakuru",
+      region_ua: "Накуру",
       country: "Kenya",
+      country_ua: "Кенія",
       iso: "KE",
       isDemo: true,
       lat: -0.325,
@@ -778,6 +813,7 @@ window.FIELD_SHIFT_DATA = {
         monthlyTempMaxC: [27, 28, 28, 26, 25, 24, 24, 24, 26, 26, 25, 26]
       },
       humanDiagnosis: "Continuous maize mining depleted soil nitrogen while rainfall between seasons grew erratic. Legume breaks double fertilizer efficiency.",
+      humanDiagnosis_ua: "Безперервний посів кукурудзи виснажив азот у ґрунті, а опади між сезонами стали нерегулярними. Бобові паузи подвоюють ефективність засвоєння добрив.",
       traditionalRotation: ["corn", "corn", "winter_wheat", "corn"],
       presets: {
         balanced: ["soybean", "corn", "chickpea", "sorghum"],
@@ -901,7 +937,32 @@ window.FIELD_SHIFT_DATA = {
       labelParcelName: "Parcel Name",
       btnDiscard: "Discard",
       btnSaveAndAnalyze: "Save & Analyze Parcel",
-      redrawBoundary: "Redraw"
+      redrawBoundary: "Redraw",
+      btnInspector: "Inspector",
+      thField: "Field",
+      thRegion: "Region",
+      thArea: "Area (ha)",
+      thSoilMoisture: "Soil Moisture",
+      th4YrRotation: "4-Yr Rotation",
+      thWaterGain: "Water Gain",
+      thPortfolioProfit: "Portfolio Profit \u0394",
+      thCrop: "Crop",
+      thWindow: "Window",
+      thWaterMm: "Water (mm)",
+      thRootCm: "Root (cm)",
+      thNBal: "N Bal (kg/ha)",
+      thHeatLimit: "Heat Limit",
+      thDroughtScore: "Drought Score",
+      thEstMargin: "Est. Margin/ha",
+      optAllDrought: "All Drought Ratings",
+      optHighDrought: "High Drought Tolerance (\u226570)",
+      optWinterCrops: "Overwintering Crops",
+      optLegumeCrops: "Nitrogen Fixers (+N)",
+      cropSearchPlaceholder: "Filter crops by name or family...",
+      newFieldPlaceholder: "e.g., North Pivot #4",
+      scienceEngineTitle: "Multi-Year Agronomic Scoring Engine",
+      scienceEngineIntro: "For each year t \u2208 {1, 2, 3, 4}, Field Shift models available root-zone moisture balance:",
+      scienceEngineDetails: "Simultaneously tracking nitrogen carryover Nt (kg/ha), host-pathogen return intervals (blocking consecutive Sclerotinia hosts like Sunflower \u2192 Soybean \u2192 Rapeseed), and flowering heat-stress penalties whenever NASA T2M_MAX exceeds each crop's biological ceiling."
     },
     ua: {
       navMap: "Робоча карта",
@@ -1015,21 +1076,118 @@ window.FIELD_SHIFT_DATA = {
       labelParcelName: "Назва ділянки",
       btnDiscard: "Скасувати",
       btnSaveAndAnalyze: "Зберегти та аналізувати",
-      redrawBoundary: "Перемалювати"
+      redrawBoundary: "Перемалювати",
+      btnInspector: "Інспектор",
+      thField: "Поле",
+      thRegion: "Регіон",
+      thArea: "Площа (га)",
+      thSoilMoisture: "Волога ґрунту",
+      th4YrRotation: "4-річна сівозміна",
+      thWaterGain: "Приріст води",
+      thPortfolioProfit: "Прибуток портфоліо \u0394",
+      thCrop: "Культура",
+      thWindow: "Вікно",
+      thWaterMm: "Вода (мм)",
+      thRootCm: "Корінь (см)",
+      thNBal: "Баланс N (кг/га)",
+      thHeatLimit: "Термопоріг",
+      thDroughtScore: "Бал посухостійкості",
+      thEstMargin: "Оцінка маржі/га",
+      optAllDrought: "Усі оцінки посухостійкості",
+      optHighDrought: "Висока посухостійкість (\u226570)",
+      optWinterCrops: "Озимі культури",
+      optLegumeCrops: "Фіксатори азоту (+N)",
+      cropSearchPlaceholder: "Фільтр культур за назвою або родиною...",
+      newFieldPlaceholder: "наприклад, Північне поле #4",
+      scienceEngineTitle: "Багаторічний агрономічний розрахунковий модуль",
+      scienceEngineIntro: "Для кожного року t \u2208 {1, 2, 3, 4} Field Shift моделює баланс вологи в кореневмісному шарі:",
+      scienceEngineDetails: "Одночасно розраховується перехід біологічного азоту Nt (кг/га), інтервали повернення патогенів (блокування накопичення склеротиніозу: Соняшник \u2192 Соя \u2192 Ріпак) та втрати врожаю від перегріву, коли NASA T2M_MAX перевищує біологічний максимум культури."
     },
     crops: {
-      winter_wheat: { name_ua: "Озима пшениця", shortName_ua: "Пшениця", badge_ua: "Озима зернова · Захисний покрив" },
-      chickpea: { name_ua: "Нут", shortName_ua: "Нут", badge_ua: "Посухостійкий бобовий · +55 кг N" },
-      sorghum: { name_ua: "Сорго зернове", shortName_ua: "Сорго", badge_ua: "Аридне C4 зерно · Захист від спеки" },
-      soybean: { name_ua: "Соя", shortName_ua: "Соя", badge_ua: "Товарний бобовий · +65 кг N" },
-      field_pea: { name_ua: "Горох польовий", shortName_ua: "Горох", badge_ua: "Ранній бобовий · +60 кг N" },
-      lentil: { name_ua: "Сочевиця", shortName_ua: "Сочевиця", badge_ua: "Ультра-низьке водоспоживання" },
-      corn: { name_ua: "Кукурудза", shortName_ua: "Кукурудза", badge_ua: "Високоврожайне товарне зерно" },
-      sunflower: { name_ua: "Соняшник", shortName_ua: "Соняшник", badge_ua: "Глибинне висушування профілю" },
-      rapeseed: { name_ua: "Озимий ріпак", shortName_ua: "Ріпак", badge_ua: "Стрижневий біобуфер" },
-      millet: { name_ua: "Просо", shortName_ua: "Просо", badge_ua: "70-денне посухостійке зерно" },
-      winter_barley: { name_ua: "Озимий ячмінь", shortName_ua: "Ячмінь", badge_ua: "Найраніший збір зернових" },
-      alfalfa: { name_ua: "Люцерна / Конюшина", shortName_ua: "Люцерна", badge_ua: "Макс. збагачення ґрунту та N" }
+      winter_wheat: {
+        name_ua: "Озима пшениця",
+        shortName_ua: "Пшениця",
+        badge_ua: "Озима зернова · Захисний покрив",
+        family_ua: "Зернові (Тонконогові)",
+        windowLabel_ua: "Вер \u2192 Лип"
+      },
+      chickpea: {
+        name_ua: "Нут",
+        shortName_ua: "Нут",
+        badge_ua: "Посухостійкий бобовий · +55 кг N",
+        family_ua: "Бобові",
+        windowLabel_ua: "Кві \u2192 Сер"
+      },
+      sorghum: {
+        name_ua: "Сорго зернове",
+        shortName_ua: "Сорго",
+        badge_ua: "Аридне C4 зерно · Захист від спеки",
+        family_ua: "Зернові (Тонконогові)",
+        windowLabel_ua: "Тра \u2192 Вер"
+      },
+      soybean: {
+        name_ua: "Соя",
+        shortName_ua: "Соя",
+        badge_ua: "Товарний бобовий · +65 кг N",
+        family_ua: "Бобові",
+        windowLabel_ua: "Тра \u2192 Вер"
+      },
+      field_pea: {
+        name_ua: "Горох польовий",
+        shortName_ua: "Горох",
+        badge_ua: "Ранній бобовий · +60 кг N",
+        family_ua: "Бобові",
+        windowLabel_ua: "Бер \u2192 Лип"
+      },
+      lentil: {
+        name_ua: "Сочевиця",
+        shortName_ua: "Сочевиця",
+        badge_ua: "Ультра-низьке водоспоживання",
+        family_ua: "Бобові",
+        windowLabel_ua: "Кві \u2192 Лип"
+      },
+      corn: {
+        name_ua: "Кукурудза",
+        shortName_ua: "Кукурудза",
+        badge_ua: "Високоврожайне товарне зерно",
+        family_ua: "Зернові (Тонконогові)",
+        windowLabel_ua: "Кві \u2192 Жов"
+      },
+      sunflower: {
+        name_ua: "Соняшник",
+        shortName_ua: "Соняшник",
+        badge_ua: "Глибинне висушування профілю",
+        family_ua: "Олійні (Айстрові)",
+        windowLabel_ua: "Кві \u2192 Вер"
+      },
+      rapeseed: {
+        name_ua: "Озимий ріпак",
+        shortName_ua: "Ріпак",
+        badge_ua: "Стрижневий біобуфер",
+        family_ua: "Хрестоцвіті (Капустяні)",
+        windowLabel_ua: "Сер \u2192 Лип"
+      },
+      millet: {
+        name_ua: "Просо",
+        shortName_ua: "Просо",
+        badge_ua: "70-денне посухостійке зерно",
+        family_ua: "Зернові (Тонконогові)",
+        windowLabel_ua: "Тра \u2192 Сер"
+      },
+      winter_barley: {
+        name_ua: "Озимий ячмінь",
+        shortName_ua: "Ячмінь",
+        badge_ua: "Найраніший збір зернових",
+        family_ua: "Зернові (Тонконогові)",
+        windowLabel_ua: "Вер \u2192 Чер"
+      },
+      alfalfa: {
+        name_ua: "Люцерна / Конюшина",
+        shortName_ua: "Люцерна",
+        badge_ua: "Макс. збагачення ґрунту та N",
+        family_ua: "Бобові",
+        windowLabel_ua: "Кві \u2192 Жов"
+      }
     },
     soils: {
       chernozem: { name_ua: "Чорнозем (глибокий суглинок)", shortName_ua: "Чорнозем" },

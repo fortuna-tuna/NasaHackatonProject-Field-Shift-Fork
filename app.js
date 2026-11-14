@@ -24,12 +24,12 @@
   };
 
   const EXTRA_NASA_ZONES = [
-    { name: "Poltava Loam Belt", lat: 49.58, lon: 34.55, moisturePct: 33, balanceMm: -58, risk: "mod" },
-    { name: "Saskatchewan Prairies", lat: 50.45, lon: -104.61, moisturePct: 26, balanceMm: -135, risk: "high" },
-    { name: "Castilla y Leon Dryland", lat: 41.65, lon: -4.72, moisturePct: 21, balanceMm: -210, risk: "high" },
-    { name: "Pampas Pergamino", lat: -33.89, lon: -60.57, moisturePct: 39, balanceMm: 45, risk: "low" },
-    { name: "Murray-Darling Basin", lat: -34.18, lon: 142.16, moisturePct: 19, balanceMm: -245, risk: "high" },
-    { name: "Punjab Alluvial Plain", lat: 30.90, lon: 75.85, moisturePct: 29, balanceMm: -120, risk: "mod" }
+    { name: "Poltava Loam Belt", name_ua: "Полтавський суглинковий пояс", lat: 49.58, lon: 34.55, moisturePct: 33, balanceMm: -58, risk: "mod" },
+    { name: "Saskatchewan Prairies", name_ua: "Прерії Саскачевану", lat: 50.45, lon: -104.61, moisturePct: 26, balanceMm: -135, risk: "high" },
+    { name: "Castilla y Leon Dryland", name_ua: "Богарні землі Кастилії-і-Леону", lat: 41.65, lon: -4.72, moisturePct: 21, balanceMm: -210, risk: "high" },
+    { name: "Pampas Pergamino", name_ua: "Пампа Пергаміно", lat: -33.89, lon: -60.57, moisturePct: 39, balanceMm: 45, risk: "low" },
+    { name: "Murray-Darling Basin", name_ua: "Басейн Муррей-Дарлінг", lat: -34.18, lon: 142.16, moisturePct: 19, balanceMm: -245, risk: "high" },
+    { name: "Punjab Alluvial Plain", name_ua: "Алювіальна рівнина Пенджабу", lat: 30.90, lon: 75.85, moisturePct: 29, balanceMm: -120, risk: "mod" }
   ];
 
   const state = {
@@ -127,6 +127,48 @@
     return cb.name;
   }
 
+  function getFieldName(field) {
+    if (!field) return "";
+    if (state.lang === "ua" && field.name_ua) return field.name_ua;
+    return field.name || "";
+  }
+
+  function getFieldRegion(field) {
+    if (!field) return "";
+    if (state.lang === "ua" && field.region_ua) return field.region_ua;
+    return field.region || "";
+  }
+
+  function getFieldCountry(field) {
+    if (!field) return "";
+    if (state.lang === "ua" && field.country_ua) return field.country_ua;
+    return field.country || "";
+  }
+
+  function getFieldDiagnosis(field) {
+    if (!field) return "";
+    if (state.lang === "ua" && field.humanDiagnosis_ua) return field.humanDiagnosis_ua;
+    return field.humanDiagnosis || "";
+  }
+
+  function getCropFamily(cropId) {
+    const c = DATA.crops[cropId];
+    if (!c) return "";
+    if (state.lang === "ua" && DATA.i18n?.crops?.[cropId]?.family_ua) {
+      return DATA.i18n.crops[cropId].family_ua;
+    }
+    return c.family || "";
+  }
+
+  function getCropWindow(cropId) {
+    const c = DATA.crops[cropId];
+    if (!c) return "";
+    if (state.lang === "ua" && DATA.i18n?.crops?.[cropId]?.windowLabel_ua) {
+      return DATA.i18n.crops[cropId].windowLabel_ua;
+    }
+    return c.windowLabel || "";
+  }
+
   function getPriorityModeLabel(modeId) {
     const m = DATA.priorityModes[modeId];
     if (!m) return modeId || "";
@@ -162,6 +204,14 @@
       const text = t(key);
       if (text) el.title = text;
     });
+
+    const ganttHead = $("ganttMonthsHead");
+    if (ganttHead) {
+      const letters = isUa
+        ? ["С", "Л", "Б", "К", "Т", "Ч", "Л", "С", "В", "Ж", "Л", "Г"]
+        : ["J", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D"];
+      ganttHead.innerHTML = letters.map((l) => `<span>${l}</span>`).join("");
+    }
 
     const btnEn = $("langBtnEn");
     const btnUa = $("langBtnUa");
@@ -355,7 +405,7 @@
       }
       localStorage.setItem(`${STORAGE_KEY}_overrides`, JSON.stringify(demoMeta));
     } catch (_err) {
-      showToast("Browser storage quota reached");
+      showToast(state.lang === "ua" ? "Перевищено ліміт пам'яті браузера" : "Browser storage quota reached");
     }
   }
 
@@ -510,6 +560,7 @@
       defaultAreaHa: areaHa,
       nasaBaseline: dyn.nasaBaseline,
       humanDiagnosis: `Live telemetry sampled at ${lat.toFixed(3)}, ${lon.toFixed(3)} (${dyn.sourceTag}). Seasonal balance is ${dyn.nasaBaseline.seasonalWaterBalanceMm >= 0 ? "+" : ""}${dyn.nasaBaseline.seasonalWaterBalanceMm} mm with ${dyn.nasaBaseline.extremeHeatDays} annual heat-stress days.`,
+      humanDiagnosis_ua: `Телеметрія вибірки на ${lat.toFixed(3)}, ${lon.toFixed(3)} (${dyn.sourceTag}). Сезонний водний баланс: ${dyn.nasaBaseline.seasonalWaterBalanceMm >= 0 ? "+" : ""}${dyn.nasaBaseline.seasonalWaterBalanceMm} мм з ${dyn.nasaBaseline.extremeHeatDays} днями теплового стресу на рік.`,
       traditionalRotation: dryBias
         ? ["sunflower", "winter_wheat", "sunflower", "corn"]
         : ["corn", "corn", "soybean", "corn"],
@@ -564,19 +615,42 @@
 
       let rotationMod = 1.0;
       const prevCropObj = DATA.crops[prev];
+      const isUa = state.lang === "ua";
+      const cropName = getCropName(cropId);
+      const prevCropName = getCropName(prev);
 
       if (prev === cropId) {
         rotationMod -= 0.16;
-        if (yr < 3) alerts.push({ level: "bad", text: `Year ${2027 + yr} repeats ${crop.name} back-to-back, sharply raising root disease and yield loss.` });
+        if (yr < 3) alerts.push({
+          level: "bad",
+          text: isUa
+            ? `${2027 + yr} рік: повторний посів ${cropName} поспіль різко підвищує ризик кореневих гнилей і втрати врожаю.`
+            : `Year ${2027 + yr} repeats ${crop.name} back-to-back, sharply raising root disease and yield loss.`
+        });
       } else if (SCLEROTINIA_GROUP.has(prev) && SCLEROTINIA_GROUP.has(cropId)) {
         rotationMod -= 0.09;
-        alerts.push({ level: "warn", text: `${2027 + yr}: ${crop.name} follows ${prevCropObj?.name || prev} — shared Sclerotinia pathogen risk.` });
+        alerts.push({
+          level: "warn",
+          text: isUa
+            ? `${2027 + yr}: ${cropName} після ${prevCropName} — спільний ризик білої гнилі (склеротиніозу).`
+            : `${2027 + yr}: ${crop.name} follows ${prevCropObj?.name || prev} — shared Sclerotinia pathogen risk.`
+        });
       } else if (crop.badPredecessors.includes(prev)) {
         rotationMod -= 0.07;
-        alerts.push({ level: "warn", text: `${2027 + yr}: Sub-optimal transition after ${prevCropObj?.name || prev}.` });
+        alerts.push({
+          level: "warn",
+          text: isUa
+            ? `${2027 + yr}: Небажаний попередник після ${prevCropName}.`
+            : `${2027 + yr}: Sub-optimal transition after ${prevCropObj?.name || prev}.`
+        });
       } else if (crop.greatPredecessors.includes(prev)) {
         rotationMod += 0.06;
-        if (yr === 0) alerts.push({ level: "good", text: `Strong opening: ${crop.name} pairs well after ${prevCropObj?.name || prev} residue.` });
+        if (yr === 0) alerts.push({
+          level: "good",
+          text: isUa
+            ? `Вдалий старт: ${cropName} добре поєднується з рештками ${prevCropName}.`
+            : `Strong opening: ${crop.name} pairs well after ${prevCropObj?.name || prev} residue.`
+        });
       }
 
       const repeatIdx = history.lastIndexOf(cropId);
@@ -584,12 +658,23 @@
         const gap = history.length - repeatIdx;
         if (gap < crop.minReturnYears) {
           rotationMod -= 0.08;
-          alerts.push({ level: "warn", text: `${2027 + yr}: ${crop.name} returns in ${gap} yr (recommended min ${crop.minReturnYears} yr interval).` });
+          alerts.push({
+            level: "warn",
+            text: isUa
+              ? `${2027 + yr}: ${cropName} повертається через ${gap} р. (рекомендований мін. інтервал ${crop.minReturnYears} р.).`
+              : `${2027 + yr}: ${crop.name} returns in ${gap} yr (recommended min ${crop.minReturnYears} yr interval).`
+          });
         }
       }
 
       if (crop.nitrogenBalanceKg > 30 && CEREAL_GROUP.has(sequence[yr + 1])) {
-        if (yr < 3) alerts.push({ level: "good", text: `${2027 + yr} ${crop.name} supplies biological N carryover for ${2028 + yr} ${DATA.crops[sequence[yr + 1]].shortName}.` });
+        const nextCropShort = getCropShortName(sequence[yr + 1]);
+        if (yr < 3) alerts.push({
+          level: "good",
+          text: isUa
+            ? `${2027 + yr} ${cropName} забезпечує біологічний азот (+N) для ${2028 + yr} (${nextCropShort}).`
+            : `${2027 + yr} ${crop.name} supplies biological N carryover for ${2028 + yr} ${DATA.crops[sequence[yr + 1]].shortName}.`
+        });
       }
 
       const phPenalty = ph < 5.3 || ph > 8.2 ? 0.05 : 0;
@@ -619,8 +704,8 @@
       yearly.push({
         year: 2027 + yr,
         cropId,
-        cropName: crop.name,
-        shortName: crop.shortName,
+        cropName: getCropName(cropId),
+        shortName: getCropShortName(cropId),
         yieldFactor: Number(yieldFactor.toFixed(2)),
         waterEndMm: Math.round(waterRemaining),
         marginUsdHa,
@@ -658,7 +743,9 @@
     if (uniqueAlerts.length === 0) {
       uniqueAlerts.push({
         level: "good",
-        text: "Balanced 4-year crop family diversity with zero consecutive pathogen overlaps."
+        text: state.lang === "ua"
+          ? "Збалансоване 4-річне чергування родин культур без повторного ризику патогенів."
+          : "Balanced 4-year crop family diversity with zero consecutive pathogen overlaps."
       });
     }
 
@@ -724,7 +811,7 @@
     field.selectedPlan = [...bestSeq];
     saveFieldsToStorage();
     renderAll();
-    showToast(`Optimized 4-yr plan (Score ${bestScore}/100)`);
+    showToast(state.lang === "ua" ? `Оптимізовано 4-річний план (Оцінка ${bestScore}/100)` : `Optimized 4-yr plan (Score ${bestScore}/100)`);
   }
 
   async function fetchWithTimeout(url, timeoutMs) {
@@ -830,11 +917,12 @@
     const badge = $("hudSyncBadge");
     const weatherBadge = $("liveWeatherBadge");
     const stripStatus = $("stripSourcesStatus");
+    const isUa = state.lang === "ua";
     if (state.telemetryLoading) {
-      badge.textContent = "Syncing...";
+      badge.textContent = isUa ? "Синхронізація..." : "Syncing...";
       badge.classList.add("is-syncing");
-      weatherBadge.textContent = "Syncing Open-Meteo...";
-      stripStatus.textContent = "SYNCING NASA POWER + OPEN-METEO ECMWF + SOILGRIDS v2.0...";
+      weatherBadge.textContent = isUa ? "Синхронізація Open-Meteo..." : "Syncing Open-Meteo...";
+      stripStatus.textContent = isUa ? "СИНХРОНІЗАЦІЯ NASA POWER + OPEN-METEO ECMWF + SOILGRIDS v2.0..." : "SYNCING NASA POWER + OPEN-METEO ECMWF + SOILGRIDS v2.0...";
       return;
     }
     badge.classList.remove("is-syncing");
@@ -842,8 +930,8 @@
     if (state.livePowerStats || getActiveField()?.isDemo) parts.push("NASA");
     if (state.liveCurrent) parts.push("Meteo");
     if (state.liveSoilGrids) parts.push("SoilGrids");
-    badge.textContent = parts.length ? parts.join(" + ") : "Benchmark";
-    weatherBadge.textContent = state.liveForecast ? "Live ECMWF 7-Day" : "Offline Forecast";
+    badge.textContent = parts.length ? parts.join(" + ") : (isUa ? "Еталон" : "Benchmark");
+    weatherBadge.textContent = state.liveForecast ? (isUa ? "Наживо ECMWF 7 днів" : "Live ECMWF 7-Day") : (isUa ? "Автономний прогноз" : "Offline Forecast");
     stripStatus.textContent = "NASA POWER \u00B7 SMAP L4 \u00B7 OPEN-METEO ECMWF \u00B7 SOILGRIDS v2.0";
   }
 
@@ -947,6 +1035,7 @@
     const cleanLat = Number(lat.toFixed(4));
     const cleanLon = Number(lon.toFixed(4));
     const seq = ++activeProbeSeq;
+    const isUa = state.lang === "ua";
 
     if (!probePopup) {
       probePopup = L.popup({ className: "probe-popup", maxWidth: 260 });
@@ -954,9 +1043,9 @@
     probePopup
       .setLatLng([cleanLat, cleanLon])
       .setContent(
-        `<div class="probe-title">Point Telemetry Probe</div>
+        `<div class="probe-title">${isUa ? "Точковий аналіз телеметрії" : "Point Telemetry Probe"}</div>
          <div class="probe-coords">${cleanLat.toFixed(4)}°, ${cleanLon.toFixed(4)}°</div>
-         <div style="color:var(--ink-muted);font-size:11px;">Querying Open-Meteo &amp; SoilGrids...</div>`
+         <div style="color:var(--ink-muted);font-size:11px;">${isUa ? "Запит до Open-Meteo та SoilGrids..." : "Querying Open-Meteo &amp; SoilGrids..."}</div>`
       )
       .openOn(map);
 
@@ -965,7 +1054,7 @@
 
     const temp = bundle.meteo?.current?.temperature_2m != null ? `${Math.round(bundle.meteo.current.temperature_2m)}°C` : "--";
     const rainSum = Array.isArray(bundle.meteo?.daily?.precipitation_sum)
-      ? `${bundle.meteo.daily.precipitation_sum.reduce((a, b) => a + (Number(b) || 0), 0).toFixed(1)} mm`
+      ? `${bundle.meteo.daily.precipitation_sum.reduce((a, b) => a + (Number(b) || 0), 0).toFixed(1)} ${isUa ? "мм" : "mm"}`
       : "--";
     const smTop = bundle.meteo?.hourly?.soil_moisture_0_to_1cm?.[0] != null
       ? `${Math.round(Number(bundle.meteo.hourly.soil_moisture_0_to_1cm[0]) * 100)}%`
@@ -973,13 +1062,13 @@
     const phVal = bundle.soilGrids?.ph != null ? Number(bundle.soilGrids.ph).toFixed(1) : "--";
 
     probePopup.setContent(
-      `<div class="probe-title">NASA / ECMWF Point Probe</div>
+      `<div class="probe-title">${isUa ? "Точковий аналіз NASA / ECMWF" : "NASA / ECMWF Point Probe"}</div>
        <div class="probe-coords">${cleanLat.toFixed(4)}°, ${cleanLon.toFixed(4)}°</div>
        <div class="probe-grid">
-         <div class="probe-cell"><span>Temp Now</span><strong>${temp}</strong></div>
-         <div class="probe-cell"><span>7d Precip</span><strong>${rainSum}</strong></div>
-         <div class="probe-cell"><span>0–1 cm Moist.</span><strong>${smTop}</strong></div>
-         <div class="probe-cell"><span>SoilGrids pH</span><strong>${phVal}</strong></div>
+         <div class="probe-cell"><span>${isUa ? "Темп. зараз" : "Temp Now"}</span><strong>${temp}</strong></div>
+         <div class="probe-cell"><span>${isUa ? "Опади 7д" : "7d Precip"}</span><strong>${rainSum}</strong></div>
+         <div class="probe-cell"><span>${isUa ? "Волога 0–1 см" : "0–1 cm Moist."}</span><strong>${smTop}</strong></div>
+         <div class="probe-cell"><span>${isUa ? "pH SoilGrids" : "SoilGrids pH"}</span><strong>${phVal}</strong></div>
        </div>`
     );
   }
@@ -992,7 +1081,7 @@
     $("globalMap").classList.add("is-drawing");
     $("drawHud").classList.remove("is-hidden");
     $("mapIdleHint").classList.add("is-hidden");
-    $("drawHudTitle").textContent = redrawId ? "Redrawing field boundary" : "Click vertices to map field boundary";
+    $("drawHudTitle").textContent = redrawId ? t("drawRedrawPrompt") : t("drawPrompt");
     renderDrawingOverlay();
   }
 
@@ -1013,7 +1102,7 @@
     const areaHa = pts.length >= 3 ? computePolygonAreaHa(pts) : 0;
 
     $("drawVertexCount").textContent = String(pts.length);
-    $("drawAreaReadout").textContent = `${areaHa.toFixed(1)} ha`;
+    $("drawAreaReadout").textContent = `${areaHa.toFixed(1)} ${state.lang === "ua" ? "га" : "ha"}`;
     $("drawFinishBtn").disabled = pts.length < 3;
 
     if (pts.length >= 3) {
@@ -1058,15 +1147,18 @@
         renderAll();
         renderFieldPolygons(true);
         syncActiveFieldTelemetry(true);
-        showToast(`Updated boundary (${areaHa.toFixed(1)} ha)`);
+        showToast(state.lang === "ua" ? `Оновлено межі (${areaHa.toFixed(1)} га)` : `Updated boundary (${areaHa.toFixed(1)} ha)`);
       }
       return;
     }
 
     pendingDrawnData = { pts, areaHa, centLat, centLon };
     const count = state.fields.filter((f) => !f.isDemo).length + 1;
-    $("newFieldNameInput").value = `Field Parcel #${count}`;
-    $("newFieldAreaBadge").textContent = `Geodesic polygon area: ${areaHa.toFixed(1)} ha (${pts.length} vertices)`;
+    const isUa = state.lang === "ua";
+    $("newFieldNameInput").value = isUa ? `Польова ділянка #${count}` : `Field Parcel #${count}`;
+    $("newFieldAreaBadge").textContent = isUa
+      ? `Геодезична площа полігону: ${areaHa.toFixed(1)} га (${pts.length} точок)`
+      : `Geodesic polygon area: ${areaHa.toFixed(1)} ha (${pts.length} vertices)`;
     $("nameFieldModal").classList.remove("is-hidden");
     $("newFieldNameInput").focus();
     $("newFieldNameInput").select();
@@ -1077,7 +1169,7 @@
   async function confirmSaveNewField() {
     if (!pendingDrawnData) return;
     const { pts, areaHa, centLat, centLon } = pendingDrawnData;
-    const customName = $("newFieldNameInput").value.trim() || `Field Parcel #${state.fields.length + 1}`;
+    const customName = $("newFieldNameInput").value.trim() || (state.lang === "ua" ? `Польова ділянка #${state.fields.length + 1}` : `Field Parcel #${state.fields.length + 1}`);
     const prevCrop = $("newFieldPrevCropSelect").value || "corn";
     pendingDrawnData = null;
     $("nameFieldModal").classList.add("is-hidden");
@@ -1094,7 +1186,7 @@
     renderAll();
     renderFieldPolygons(true);
     await syncActiveFieldTelemetry(true);
-    showToast(`Saved ${customName} (${areaHa.toFixed(1)} ha)`);
+    showToast(state.lang === "ua" ? `Збережено «${customName}» (${areaHa.toFixed(1)} га)` : `Saved ${customName} (${areaHa.toFixed(1)} ha)`);
   }
 
   function renderFieldPolygons(fitToActive) {
@@ -1142,13 +1234,13 @@
       });
 
       if (zoom >= 9) {
-        poly.bindTooltip(`${Number(f.defaultAreaHa).toFixed(1)} ha`, {
+        poly.bindTooltip(`${Number(f.defaultAreaHa).toFixed(1)} ${state.lang === "ua" ? "га" : "ha"}`, {
           permanent: true,
           direction: "center",
           className: "parcel-ha-tag"
         });
       } else {
-        poly.bindTooltip(`${f.name} (${f.defaultAreaHa} ha)`, {
+        poly.bindTooltip(`${getFieldName(f)} (${f.defaultAreaHa} ${state.lang === "ua" ? "га" : "ha"})`, {
           direction: "top",
           offset: [0, -4]
         });
@@ -1179,14 +1271,18 @@
     const zones = [
       ...state.fields.map((f) => ({
         id: f.id,
-        name: f.name,
+        name: getFieldName(f),
         lat: f.lat,
         lon: f.lon,
         moisturePct: f.nasaBaseline.rootMoisturePct,
         balanceMm: f.nasaBaseline.seasonalWaterBalanceMm,
         risk: f.nasaBaseline.droughtRiskScore >= 68 ? "high" : f.nasaBaseline.droughtRiskScore >= 45 ? "mod" : "low"
       })),
-      ...EXTRA_NASA_ZONES.map((z) => ({ ...z, id: null }))
+      ...EXTRA_NASA_ZONES.map((z) => ({
+        ...z,
+        name: state.lang === "ua" && z.name_ua ? z.name_ua : z.name,
+        id: null
+      }))
     ];
 
     for (const z of zones) {
@@ -1200,7 +1296,9 @@
       });
 
       const sign = z.balanceMm >= 0 ? "+" : "";
-      const labelHtml = `<strong>${escapeHtml(z.name)}</strong><br>SMAP ${z.moisturePct}% &middot; Bal ${sign}${z.balanceMm} mm`;
+      const balLabel = state.lang === "ua" ? "Баланс" : "Bal";
+      const waterUnit = state.lang === "ua" ? "мм" : "mm";
+      const labelHtml = `<strong>${escapeHtml(z.name)}</strong><br>SMAP ${z.moisturePct}% &middot; ${balLabel} ${sign}${z.balanceMm} ${waterUnit}`;
 
       marker.bindTooltip(showPermanent ? `${z.moisturePct}% SMAP` : labelHtml, {
         permanent: showPermanent,
@@ -1251,9 +1349,12 @@
     let arr = [...state.fields];
 
     if (filterQ) {
-      arr = arr.filter((f) =>
-        `${f.name} ${f.region} ${f.country}`.toLowerCase().includes(filterQ)
-      );
+      arr = arr.filter((f) => {
+        const fn = getFieldName(f);
+        const fr = getFieldRegion(f);
+        const fc = getFieldCountry(f);
+        return `${f.name} ${fn} ${f.region} ${fr} ${f.country} ${fc}`.toLowerCase().includes(filterQ);
+      });
     }
 
     if (state.sortBy === "risk") {
@@ -1261,12 +1362,12 @@
     } else if (state.sortBy === "area") {
       arr.sort((a, b) => b.defaultAreaHa - a.defaultAreaHa);
     } else if (state.sortBy === "name") {
-      arr.sort((a, b) => a.name.localeCompare(b.name));
+      arr.sort((a, b) => getFieldName(a).localeCompare(getFieldName(b)));
     }
 
     const totalHa = state.fields.reduce((s, f) => s + Number(f.defaultAreaHa || 0), 0);
     const parcelUnit = state.lang === "ua" ? "ділянок" : "parcels";
-    $("sidebarTotalHa").textContent = `${totalHa.toFixed(1)} ha \u00B7 ${state.fields.length} ${parcelUnit}`;
+    $("sidebarTotalHa").textContent = `${totalHa.toFixed(1)} ${state.lang === "ua" ? "га" : "ha"} \u00B7 ${state.fields.length} ${parcelUnit}`;
     $("headerParcelsLabel").textContent = `${t("parcelsHeader")} (${state.fields.length})`;
 
     if (!arr.length) {
@@ -1292,10 +1393,10 @@
           <div class="field-thumb">${buildFieldThumbSvg(f.polygon)}</div>
           <div class="field-card-main">
             <div class="field-card-top">
-              <span class="field-card-name">${escapeHtml(f.name)}</span>
+              <span class="field-card-name">${escapeHtml(getFieldName(f))}</span>
               ${badge}
             </div>
-            <div class="field-card-sub">${Number(f.defaultAreaHa).toFixed(1)} ha &middot; ${prevLabel}: ${escapeHtml(prevCropName)}</div>
+            <div class="field-card-sub">${Number(f.defaultAreaHa).toFixed(1)} ${state.lang === "ua" ? "га" : "ha"} &middot; ${prevLabel}: ${escapeHtml(prevCropName)}</div>
           </div>
           <div class="field-card-right">
             <span class="risk-dot-row" title="${state.lang === "ua" ? "Ризик посухи" : "Drought risk"} ${score}/100"><i class="dot-risk ${riskCls}"></i>${score}</span>
@@ -1317,10 +1418,19 @@
       ? DATA.i18n.soils[eff.soil.id].shortName_ua
       : eff.soil.shortName;
 
-    $("inspectorFieldName").textContent = field.name;
-    $("inspectorFieldMeta").textContent = `${Number(eff.areaHa).toFixed(1)} ha \u00B7 ${field.region}, ${field.country} \u00B7 ${soilShort}`;
+    $("inspectorFieldName").textContent = getFieldName(field);
+    const regionStr = getFieldRegion(field);
+    const countryStr = getFieldCountry(field);
+    const placeStr = regionStr ? `${regionStr}, ${countryStr}` : countryStr;
+    const isUa = state.lang === "ua";
+    const haUnit = isUa ? "га" : "ha";
+    const mmUnit = isUa ? "мм" : "mm";
+    const speedUnit = isUa ? "м/с" : "m/s";
+    const cmUnit = isUa ? "см" : "cm";
 
-    $("hudFieldTitle").textContent = field.name;
+    $("inspectorFieldMeta").textContent = `${Number(eff.areaHa).toFixed(1)} ${haUnit} \u00B7 ${placeStr} \u00B7 ${soilShort}`;
+
+    $("hudFieldTitle").textContent = getFieldName(field);
     if (state.liveCurrent) {
       const t = state.liveCurrent.temperature_2m;
       const rain7d = state.liveForecast?.precipitation_sum
@@ -1328,32 +1438,42 @@
         : state.liveCurrent.precipitation || 0;
       const windMs = state.liveCurrent.wind_speed_10m != null ? (state.liveCurrent.wind_speed_10m / 3.6).toFixed(1) : "--";
       $("hudTempVal").textContent = `${t >= 0 ? "+" : ""}${Math.round(t)}\u00B0C`;
-      $("hudPrecipVal").textContent = `${rain7d.toFixed(1)} mm`;
-      $("hudWindVal").textContent = `${windMs} m/s`;
+      $("hudPrecipVal").textContent = `${rain7d.toFixed(1)} ${mmUnit}`;
+      $("hudWindVal").textContent = `${windMs} ${speedUnit}`;
     } else {
       $("hudTempVal").textContent = state.telemetryLoading ? "..." : "--\u00B0C";
-      $("hudPrecipVal").textContent = state.telemetryLoading ? "..." : "-- mm";
-      $("hudWindVal").textContent = "-- m/s";
+      $("hudPrecipVal").textContent = state.telemetryLoading ? "..." : `-- ${mmUnit}`;
+      $("hudWindVal").textContent = `-- ${speedUnit}`;
     }
 
     $("hudMoistureVal").textContent = `${field.nasaBaseline.rootMoisturePct}%`;
-    $("hudSoilSummary").textContent = `AWC ${Math.round(eff.soil.waterHoldingMmPerM)} mm \u00B7 Plan ${recSim.compositeScore}/100`;
+    const planLabel = isUa ? "План" : "Plan";
+    $("hudSoilSummary").textContent = `AWC ${Math.round(eff.soil.waterHoldingMmPerM)} ${mmUnit} \u00B7 ${planLabel} ${recSim.compositeScore}/100`;
     renderTelemetryStatus();
   }
 
   function renderClimateTab(field) {
+    const isUa = state.lang === "ua";
+    const mmUnit = isUa ? "мм" : "mm";
+    const cmUnit = isUa ? "см" : "cm";
     const b = field.nasaBaseline;
     const eff = getEffectiveSoilAndField(field);
 
     $("kpiMoistureVal").textContent = state.telemetryLoading && !field.isDemo ? "..." : `${b.rootMoisturePct}%`;
-    $("kpiMoistureSub").textContent = `${b.rootAvailableWaterMm} mm available / deep ${b.deepMoisturePct}%`;
+    $("kpiMoistureSub").textContent = isUa
+      ? `${b.rootAvailableWaterMm} мм доступно / глиб ${b.deepMoisturePct}%`
+      : `${b.rootAvailableWaterMm} mm available / deep ${b.deepMoisturePct}%`;
 
     const balSign = b.seasonalWaterBalanceMm >= 0 ? "+" : "";
-    $("kpiBalanceVal").textContent = state.telemetryLoading && !field.isDemo ? "..." : `${balSign}${b.seasonalWaterBalanceMm} mm`;
-    $("kpiBalanceSub").textContent = `${b.annualPrecipMm} rain vs ${b.annualEtDemandMm} ET`;
+    $("kpiBalanceVal").textContent = state.telemetryLoading && !field.isDemo ? "..." : `${balSign}${b.seasonalWaterBalanceMm} ${mmUnit}`;
+    $("kpiBalanceSub").textContent = isUa
+      ? `${b.annualPrecipMm} мм опадів vs ${b.annualEtDemandMm} мм ET`
+      : `${b.annualPrecipMm} rain vs ${b.annualEtDemandMm} ET`;
 
     $("kpiAnomalyVal").textContent = `+${b.warmingAnomalyC}\u00B0C`;
-    $("kpiAnomalySub").textContent = `${b.extremeHeatDays} days \u2265 30\u00B0C`;
+    $("kpiAnomalySub").textContent = isUa
+      ? `${b.extremeHeatDays} дн. \u2265 30\u00B0C`
+      : `${b.extremeHeatDays} days \u2265 30\u00B0C`;
 
     const fcStrip = $("liveForecastStrip");
     if (state.liveForecast?.time?.length) {
@@ -1361,27 +1481,27 @@
         .slice(0, 7)
         .map((dateStr, i) => {
           const dt = new Date(`${dateStr}T12:00:00`);
-          const dow = dt.toLocaleDateString("en-US", { weekday: "short" });
+          const dow = dt.toLocaleDateString(isUa ? "uk-UA" : "en-US", { weekday: "short" });
           const tmax = Math.round(state.liveForecast.temperature_2m_max[i] ?? 0);
           const pr = Number(state.liveForecast.precipitation_sum[i] ?? 0).toFixed(1);
-          return `<div class="fc-day"><span class="fc-dow">${dow}</span><strong class="fc-temp">${tmax}\u00B0</strong><span class="fc-rain">${pr} mm</span></div>`;
+          return `<div class="fc-day"><span class="fc-dow">${dow}</span><strong class="fc-temp">${tmax}\u00B0</strong><span class="fc-rain">${pr} ${mmUnit}</span></div>`;
         })
         .join("");
     } else {
-      fcStrip.innerHTML = Array.from({ length: 7 }, (_, i) => `<div class="fc-day"><span class="fc-dow">D+${i + 1}</span><strong class="fc-temp">--\u00B0</strong><span class="fc-rain">-- mm</span></div>`).join("");
+      fcStrip.innerHTML = Array.from({ length: 7 }, (_, i) => `<div class="fc-day"><span class="fc-dow">D+${i + 1}</span><strong class="fc-temp">--\u00B0</strong><span class="fc-rain">-- ${mmUnit}</span></div>`).join("");
     }
 
     const sm0 = state.liveCurrent?.soil_moisture_0_to_1cm;
     const sm9 = state.liveCurrent?.soil_moisture_9_to_27cm;
     const sm27 = state.liveCurrent?.soil_moisture_27_to_81cm;
     $("soilDepthStrip").innerHTML = `
-      <div class="depth-chip"><span>0\u20131 cm</span><strong>${sm0 != null ? Math.round(sm0 * 100) + "%" : "--"}</strong></div>
-      <div class="depth-chip"><span>9\u201327 cm</span><strong>${sm9 != null ? Math.round(sm9 * 100) + "%" : "--"}</strong></div>
-      <div class="depth-chip"><span>27\u201381 cm</span><strong>${sm27 != null ? Math.round(sm27 * 100) + "%" : "--"}</strong></div>
+      <div class="depth-chip"><span>0\u20131 ${cmUnit}</span><strong>${sm0 != null ? Math.round(sm0 * 100) + "%" : "--"}</strong></div>
+      <div class="depth-chip"><span>9\u201327 ${cmUnit}</span><strong>${sm9 != null ? Math.round(sm9 * 100) + "%" : "--"}</strong></div>
+      <div class="depth-chip"><span>27\u201381 ${cmUnit}</span><strong>${sm27 != null ? Math.round(sm27 * 100) + "%" : "--"}</strong></div>
     `;
 
     const sg = state.liveSoilGrids;
-    $("soilSourceTag").textContent = sg ? "SoilGrids v2.0 Live" : "Regional Reference";
+    $("soilSourceTag").textContent = sg ? "SoilGrids v2.0 Live" : (state.lang === "ua" ? "Регіональний довідник" : "Regional Reference");
     $("clayStatVal").textContent = `${sg?.clayPct ?? eff.soil.defaultClayPct}%`;
     $("sandStatVal").textContent = `${sg?.sandPct ?? eff.soil.defaultSandPct}%`;
     $("phStatVal").textContent = String(sg?.ph ?? eff.ph);
@@ -1394,13 +1514,22 @@
     $("somSlider").value = eff.somPct;
     $("somReadout").textContent = `${Number(eff.somPct).toFixed(1)}%`;
 
-    $("fieldDiagnosisText").textContent = field.humanDiagnosis;
+    $("fieldDiagnosisText").textContent = getFieldDiagnosis(field);
     drawClimateChart(field);
   }
 
   function renderRotationTab(field, recSim, tradSim) {
-    const scoreWord = state.lang === "ua" ? "Бал плану" : "Plan Score";
+    const isUa = state.lang === "ua";
+    const scoreWord = isUa ? "Бал плану" : "Plan Score";
     $("rotationScoreBadge").textContent = `${scoreWord} ${recSim.compositeScore}/100`;
+
+    const ganttHead = $("ganttMonthsHead");
+    if (ganttHead) {
+      const letters = isUa
+        ? ["С", "Л", "Б", "К", "Т", "Ч", "Л", "С", "В", "Ж", "Л", "Г"]
+        : ["J", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D"];
+      ganttHead.innerHTML = letters.map((l) => `<span>${l}</span>`).join("");
+    }
 
     const modeContainer = $("priorityModeGroup");
     modeContainer.innerHTML = Object.values(DATA.priorityModes)
@@ -1421,10 +1550,18 @@
 
     const waterDiff = recSim.avgWaterMm - tradSim.avgWaterMm;
     const profitDiff = recSim.totalMarginUsdHa - tradSim.totalMarginUsdHa;
-    const vsTrad = state.lang === "ua" ? "проти традиційної" : "vs. traditional";
-    const rootMoistAvg = state.lang === "ua" ? "вологи коренів (сер.)" : "root moisture avg";
-    const over4yr = state.lang === "ua" ? "за 4 роки" : "over 4 years";
-    $("rotationDeltaNote").textContent = `${vsTrad} (${tradSim.compositeScore}/100): ${waterDiff >= 0 ? "+" : ""}${waterDiff} mm ${rootMoistAvg} \u00B7 ${profitDiff >= 0 ? "+" : ""}$${profitDiff}/ha ${over4yr}`;
+    const vsTrad = isUa ? "проти традиційної" : "vs. traditional";
+    const rootMoistAvg = isUa ? "вологи коренів (сер.)" : "root moisture avg";
+    const over4yr = isUa ? "за 4 роки" : "over 4 years";
+    const waterUnit = isUa ? "мм" : "mm";
+    const haUnit = isUa ? "га" : "ha";
+    const cmUnit = isUa ? "см" : "cm";
+    const kgUnit = isUa ? "кг" : "kg";
+    $("rotationDeltaNote").textContent = `${vsTrad} (${tradSim.compositeScore}/100): ${waterDiff >= 0 ? "+" : ""}${waterDiff} ${waterUnit} ${rootMoistAvg} \u00B7 ${profitDiff >= 0 ? "+" : ""}$${profitDiff}/${haUnit} ${over4yr}`;
+
+    const monthsArr = isUa
+      ? ["Січ", "Лют", "Бер", "Кві", "Тра", "Чер", "Лип", "Сер", "Вер", "Жов", "Лис", "Гру"]
+      : MONTHS;
 
     for (let yr = 0; yr < 4; yr += 1) {
       const sel = $(`year${yr + 1}Select`);
@@ -1433,8 +1570,9 @@
       const crop = DATA.crops[cropId] || DATA.crops.winter_wheat;
       const simYr = recSim.yearly[yr];
       const cropShort = getCropShortName(cropId);
+      const cropWin = getCropWindow(cropId);
 
-      $(`ganttMeta${yr + 1}`).textContent = `${crop.rootDepthCm}cm \u00B7 ${crop.nitrogenBalanceKg >= 0 ? "+" : ""}${crop.nitrogenBalanceKg}kg N \u00B7 $${simYr.marginUsdHa}/ha`;
+      $(`ganttMeta${yr + 1}`).textContent = `${crop.rootDepthCm}${cmUnit} \u00B7 ${crop.nitrogenBalanceKg >= 0 ? "+" : ""}${crop.nitrogenBalanceKg}${kgUnit} N \u00B7 $${simYr.marginUsdHa}/${haUnit}`;
 
       const track = $(`ganttTrack${yr + 1}`);
       const grid = `<div class="gantt-grid-lines">${"<span></span>".repeat(12)}</div>`;
@@ -1446,23 +1584,23 @@
       if (!crop.overwinters) {
         const leftPct = ((crop.sowMonth - 1) / 12) * 100;
         const widthPct = ((crop.harvestMonth - crop.sowMonth + 1) / 12) * 100;
-        barsHtml += `<div class="gantt-bar ${catCls}" style="left:${leftPct.toFixed(2)}%;width:${widthPct.toFixed(2)}%;" title="${escapeHtml(cropShort)} (${escapeHtml(crop.windowLabel)})">${escapeHtml(cropShort)}</div>`;
+        barsHtml += `<div class="gantt-bar ${catCls}" style="left:${leftPct.toFixed(2)}%;width:${widthPct.toFixed(2)}%;" title="${escapeHtml(cropShort)} (${escapeHtml(cropWin)})">${escapeHtml(cropShort)}</div>`;
         if (state.useCoverCrop && crop.harvestMonth < 12) {
           const covLeft = (crop.harvestMonth / 12) * 100;
           const covW = ((12 - crop.harvestMonth) / 12) * 100;
-          barsHtml += `<div class="gantt-bar cat-cover" style="left:${covLeft.toFixed(2)}%;width:${covW.toFixed(2)}%;" title="${state.lang === "ua" ? "Покривна культура" : "Winter Cover Crop"}">${state.lang === "ua" ? "Покрив" : "Cover"}</div>`;
+          barsHtml += `<div class="gantt-bar cat-cover" style="left:${covLeft.toFixed(2)}%;width:${covW.toFixed(2)}%;" title="${isUa ? "Покривна культура" : "Winter Cover Crop"}">${isUa ? "Покрив" : "Cover"}</div>`;
         }
       } else {
         const springW = (crop.harvestMonth / 12) * 100;
         const fallLeft = ((crop.sowMonth - 1) / 12) * 100;
         const fallW = ((13 - crop.sowMonth) / 12) * 100;
-        barsHtml += `<div class="gantt-bar ${catCls}" style="left:0%;width:${springW.toFixed(2)}%;" title="${state.lang === "ua" ? "Збір" : "Harvest"} ${MONTHS[crop.harvestMonth - 1]}">${escapeHtml(cropShort)} ${state.lang === "ua" ? "Збір" : "Harvest"}</div>`;
+        barsHtml += `<div class="gantt-bar ${catCls}" style="left:0%;width:${springW.toFixed(2)}%;" title="${isUa ? "Збір" : "Harvest"} ${monthsArr[crop.harvestMonth - 1]}">${escapeHtml(cropShort)} ${isUa ? "Збір" : "Harvest"}</div>`;
         if (state.useCoverCrop && crop.harvestMonth + 1 < crop.sowMonth) {
           const gapLeft = (crop.harvestMonth / 12) * 100;
           const gapW = ((crop.sowMonth - 1 - crop.harvestMonth) / 12) * 100;
-          barsHtml += `<div class="gantt-bar cat-cover" style="left:${gapLeft.toFixed(2)}%;width:${gapW.toFixed(2)}%;" title="${state.lang === "ua" ? "Літній сидерат" : "Summer Catch Cover"}">${state.lang === "ua" ? "Покрив" : "Cover"}</div>`;
+          barsHtml += `<div class="gantt-bar cat-cover" style="left:${gapLeft.toFixed(2)}%;width:${gapW.toFixed(2)}%;" title="${isUa ? "Літній сидерат" : "Summer Catch Cover"}">${isUa ? "Покрив" : "Cover"}</div>`;
         }
-        barsHtml += `<div class="gantt-bar ${catCls}" style="left:${fallLeft.toFixed(2)}%;width:${fallW.toFixed(2)}%;" title="${state.lang === "ua" ? "Сівба" : "Sow"} ${MONTHS[crop.sowMonth - 1]}">${state.lang === "ua" ? "Сівба" : "Sow"}</div>`;
+        barsHtml += `<div class="gantt-bar ${catCls}" style="left:${fallLeft.toFixed(2)}%;width:${fallW.toFixed(2)}%;" title="${isUa ? "Сівба" : "Sow"} ${monthsArr[crop.sowMonth - 1]}">${isUa ? "Сівба" : "Sow"}</div>`;
       }
 
       track.innerHTML = grid + barsHtml;
@@ -1481,19 +1619,30 @@
     const somGainDiff = Number((recSim.somDelta - tradSim.somDelta).toFixed(2));
     const scoreDiff = recSim.compositeScore - tradSim.compositeScore;
 
-    $("impactWaterDelta").textContent = `${waterDiffMm >= 0 ? "+" : ""}${waterDiffMm} mm`;
-    $("impactWaterDelta").className = `kpi-val ${waterDiffMm >= 0 ? "kpi-green" : ""}`;
-    $("impactWaterSub").textContent = `${recSim.avgWaterMm} mm vs ${tradSim.avgWaterMm} mm avg`;
+    const isUa = state.lang === "ua";
+    const waterUnit = isUa ? "мм" : "mm";
+    const haUnit = isUa ? "га" : "ha";
+    const ptsUnit = isUa ? "бал." : "pts";
 
-    $("impactProfitDelta").textContent = `${marginDiffHa >= 0 ? "+" : ""}$${marginDiffHa}/ha`;
+    $("impactWaterDelta").textContent = `${waterDiffMm >= 0 ? "+" : ""}${waterDiffMm} ${waterUnit}`;
+    $("impactWaterDelta").className = `kpi-val ${waterDiffMm >= 0 ? "kpi-green" : ""}`;
+    $("impactWaterSub").textContent = isUa
+      ? `${recSim.avgWaterMm} мм проти ${tradSim.avgWaterMm} мм сер.`
+      : `${recSim.avgWaterMm} mm vs ${tradSim.avgWaterMm} mm avg`;
+
+    $("impactProfitDelta").textContent = `${marginDiffHa >= 0 ? "+" : ""}$${marginDiffHa}/${haUnit}`;
     $("impactProfitDelta").className = `kpi-val ${marginDiffHa >= 0 ? "kpi-green" : ""}`;
-    $("impactProfitSub").textContent = `${totalParcelUsd >= 0 ? "+" : ""}$${totalParcelUsd.toLocaleString()} (${areaHa.toFixed(1)} ha)`;
+    $("impactProfitSub").textContent = `${totalParcelUsd >= 0 ? "+" : ""}$${totalParcelUsd.toLocaleString()} (${areaHa.toFixed(1)} ${haUnit})`;
 
     $("impactSomDelta").textContent = `${somGainDiff >= 0 ? "+" : ""}${somGainDiff}%`;
-    $("impactSomSub").textContent = `End SOM ${recSim.endSomPct}% vs ${tradSim.endSomPct}%`;
+    $("impactSomSub").textContent = isUa
+      ? `Кінц. SOM ${recSim.endSomPct}% проти ${tradSim.endSomPct}%`
+      : `End SOM ${recSim.endSomPct}% vs ${tradSim.endSomPct}%`;
 
-    $("impactScoreDelta").textContent = `${scoreDiff >= 0 ? "+" : ""}${scoreDiff} pts`;
-    $("impactScoreSub").textContent = `${recSim.compositeScore} vs ${tradSim.compositeScore} / 100`;
+    $("impactScoreDelta").textContent = `${scoreDiff >= 0 ? "+" : ""}${scoreDiff} ${ptsUnit}`;
+    $("impactScoreSub").textContent = isUa
+      ? `${recSim.compositeScore} проти ${tradSim.compositeScore} / 100`
+      : `${recSim.compositeScore} vs ${tradSim.compositeScore} / 100`;
 
     $("comparisonTableBody").innerHTML = recSim.yearly
       .map((ry, i) => {
@@ -1503,7 +1652,7 @@
           <td class="table-num">${ry.year}</td>
           <td><strong>${escapeHtml(getCropShortName(ry.cropId))}</strong></td>
           <td style="color:var(--ink-muted)">${escapeHtml(getCropShortName(ty.cropId))}</td>
-          <td class="table-num">${ry.waterEndMm} mm <span style="color:var(--ink-muted)">(${ty.waterEndMm})</span></td>
+          <td class="table-num">${ry.waterEndMm} ${waterUnit} <span style="color:var(--ink-muted)">(${ty.waterEndMm})</span></td>
           <td class="table-num"><strong>$${ry.marginUsdHa}</strong> <span style="color:${mDiff >= 0 ? "var(--accent)" : "var(--risk-red)"}">(${mDiff >= 0 ? "+" : ""}${mDiff})</span></td>
         </tr>`;
       })
@@ -1519,7 +1668,7 @@
     const waterDiff = recSim.avgWaterMm - tradSim.avgWaterMm;
     const marginDiffHa = recSim.totalMarginUsdHa - tradSim.totalMarginUsdHa;
 
-    $("reportVerdictTitle").textContent = `${getPriorityModeLabel(state.priorityMode) || "Custom"} — ${field.name}`;
+    $("reportVerdictTitle").textContent = `${getPriorityModeLabel(state.priorityMode) || "Custom"} — ${getFieldName(field)}`;
     if (state.lang === "ua") {
       $("reportVerdictDesc").textContent = `Призначена 4-річна сівозміна збільшує запас вологи кореневого шару на ${waterDiff >= 0 ? "+" : ""}${waterDiff} мм і забезпечує ${marginDiffHa >= 0 ? "+" : ""}$${marginDiffHa}/га порівняно з базовою практикою.`;
       $("reportFieldMeta").textContent = `Площа: ${eff.areaHa.toFixed(1)} га \u00B7 Ґрунт: ${getSoilName(eff.soil.id)} (pH ${eff.ph}, SOM ${eff.somPct}%) \u00B7 Попередник: ${getCropShortName(eff.prevCrop)}`;
@@ -1530,21 +1679,20 @@
 
     $("reportScheduleBody").innerHTML = recSim.yearly
       .map((ry) => {
-        const c = DATA.crops[ry.cropId];
         const coverName = state.useCoverCrop ? getCoverCropName(state.coverCropId) : (state.lang === "ua" ? "Чистий пар" : "Bare fallow");
         return `<tr>
           <td class="table-num">${ry.year}</td>
-          <td><strong>${escapeHtml(getCropName(ry.cropId))}</strong><br><span style="font-size:10.5px;color:var(--ink-muted)">${escapeHtml(c.windowLabel)}</span></td>
+          <td><strong>${escapeHtml(getCropName(ry.cropId))}</strong><br><span style="font-size:10.5px;color:var(--ink-muted)">${escapeHtml(getCropWindow(ry.cropId))}</span></td>
           <td>${escapeHtml(coverName)}${state.useNoTill ? " + No-Till" : ""}</td>
           <td class="table-num">$${ry.marginUsdHa}</td>
-          <td class="table-num">${ry.waterEndMm} mm</td>
+          <td class="table-num">${ry.waterEndMm} ${state.lang === "ua" ? "мм" : "mm"}</td>
         </tr>`;
       })
       .join("");
 
     const tasks = state.lang === "ua"
       ? [
-          `Сівба культури ${getCropName(recSim.yearly[0].cropId)} (${DATA.crops[recSim.yearly[0].cropId].windowLabel}) одразу після пожнивних решток ${getCropName(eff.prevCrop)}.`,
+          `Сівба культури ${getCropName(recSim.yearly[0].cropId)} (${getCropWindow(recSim.yearly[0].cropId)}) одразу після пожнивних решток ${getCropName(eff.prevCrop)}.`,
           state.useCoverCrop
             ? `Висів сидерату ${getCoverCropName(state.coverCropId)} одразу у післяжнивні вікна для збереження ~${cover.waterRetentionBonusMm || 20} мм вологи та накопичення +${cover.nBonusKg || 25} кг/га N.`
             : "Щомісячний моніторинг зимового випаровування вологи за супутниковими оновленнями NASA SMAP.",
@@ -1569,35 +1717,59 @@
   function buildPrintSheet() {
     const field = getActiveField();
     if (!field) return;
+    const isUa = state.lang === "ua";
     const eff = getEffectiveSoilAndField(field);
     const recSim = simulateRotation(field, state.planSequence, state.useCoverCrop, state.coverCropId, state.useNoTill);
     const tradSim = simulateRotation(field, field.traditionalRotation, false, state.coverCropId, false);
     const cover = DATA.coverCropBridges[state.coverCropId];
     const totalUsd = Math.round((recSim.totalMarginUsdHa - tradSim.totalMarginUsdHa) * eff.areaHa);
 
+    const fName = getFieldName(field);
+    const fRegion = getFieldRegion(field);
+    const fCountry = getFieldCountry(field);
+    const soilName = getSoilName(eff.soil.id);
+
+    const titleStr = isUa ? "Field Shift — 4-річний агротехнічний план" : "Field Shift — 4-Year Agronomic Prescription";
+    const genStr = isUa ? `Створено ${new Date().toISOString().slice(0, 10)}` : `Generated ${new Date().toISOString().slice(0, 10)}`;
+    const authStr = isUa ? "Верифіковано NASA POWER & SMAP" : "NASA POWER & SMAP Verified";
+    const lblArea = isUa ? "Площа ділянки" : "Parcel Area";
+    const lblSoil = isUa ? "Ґрунтовий профіль" : "Soil Profile";
+    const lblWater = isUa ? "Сер. приріст вологи" : "Avg Water Gain";
+    const lblProfit = isUa ? "Прибуток поля за 4 роки \u0394" : "4-Yr Parcel Profit \u0394";
+    const schedTitle = isUa ? "Призначений графік сівозміни (2027\u20132030)" : "Prescribed Rotation Schedule (2027\u20132030)";
+    const diagTitle = isUa ? "Агрономічна діагностика та контроль ризиків" : "Agronomic Diagnostics & Risk Controls";
+
     $("printSheet").innerHTML = `
       <div class="ps-header">
         <div>
-          <h1 class="ps-title">Field Shift — 4-Year Agronomic Prescription</h1>
-          <p class="ps-sub">${escapeHtml(field.name)} (${escapeHtml(field.region)}, ${escapeHtml(field.country)}) &middot; ${field.lat.toFixed(4)}, ${field.lon.toFixed(4)}</p>
+          <h1 class="ps-title">${titleStr}</h1>
+          <p class="ps-sub">${escapeHtml(fName)} (${escapeHtml(fRegion)}, ${escapeHtml(fCountry)}) &middot; ${field.lat.toFixed(4)}, ${field.lon.toFixed(4)}</p>
         </div>
         <div style="text-align:right;font-size:10.5px;">
-          <strong>Generated ${new Date().toISOString().slice(0, 10)}</strong><br>
-          NASA POWER &amp; SMAP Verified
+          <strong>${genStr}</strong><br>
+          ${authStr}
         </div>
       </div>
 
       <div class="ps-grid-4">
-        <div class="ps-box"><span>Parcel Area</span><strong>${eff.areaHa.toFixed(1)} ha</strong></div>
-        <div class="ps-box"><span>Soil Profile</span><strong>${escapeHtml(eff.soil.shortName)} (SOM ${eff.somPct}%)</strong></div>
-        <div class="ps-box"><span>Avg Water Gain</span><strong>${recSim.avgWaterMm - tradSim.avgWaterMm >= 0 ? "+" : ""}${recSim.avgWaterMm - tradSim.avgWaterMm} mm</strong></div>
-        <div class="ps-box"><span>4-Yr Parcel Profit &Delta;</span><strong>${totalUsd >= 0 ? "+" : ""}$${totalUsd.toLocaleString()}</strong></div>
+        <div class="ps-box"><span>${lblArea}</span><strong>${eff.areaHa.toFixed(1)} ${isUa ? "га" : "ha"}</strong></div>
+        <div class="ps-box"><span>${lblSoil}</span><strong>${escapeHtml(soilName)} (SOM ${eff.somPct}%)</strong></div>
+        <div class="ps-box"><span>${lblWater}</span><strong>${recSim.avgWaterMm - tradSim.avgWaterMm >= 0 ? "+" : ""}${recSim.avgWaterMm - tradSim.avgWaterMm} ${isUa ? "мм" : "mm"}</strong></div>
+        <div class="ps-box"><span>${lblProfit}</span><strong>${totalUsd >= 0 ? "+" : ""}$${totalUsd.toLocaleString()}</strong></div>
       </div>
 
-      <div class="ps-section-title">Prescribed Rotation Schedule (2027\u20132030)</div>
+      <div class="ps-section-title">${schedTitle}</div>
       <table class="ps-table">
         <thead>
-          <tr><th>Season</th><th>Primary Crop</th><th>Sowing &amp; Harvest</th><th>Root Depth</th><th>Cover &amp; Practice</th><th>Water End</th><th>Net Margin / ha</th></tr>
+          <tr>
+            <th>${isUa ? "Сезон" : "Season"}</th>
+            <th>${isUa ? "Основна культура" : "Primary Crop"}</th>
+            <th>${isUa ? "Сівба та збирання" : "Sowing & Harvest"}</th>
+            <th>${isUa ? "Корінь" : "Root Depth"}</th>
+            <th>${isUa ? "Покрив та обробіток" : "Cover & Practice"}</th>
+            <th>${isUa ? "Кінцева волога" : "Water End"}</th>
+            <th>${isUa ? "Маржа / га" : "Net Margin / ha"}</th>
+          </tr>
         </thead>
         <tbody>
           ${recSim.yearly
@@ -1605,28 +1777,32 @@
               const c = DATA.crops[ry.cropId];
               const ty = tradSim.yearly[idx];
               const cName = getCropName(ry.cropId);
-              const coverTitle = state.useCoverCrop ? getCoverCropName(state.coverCropId) : (state.lang === "ua" ? "Без покриву" : "None");
+              const cFam = getCropFamily(ry.cropId);
+              const cWin = getCropWindow(ry.cropId);
+              const coverTitle = state.useCoverCrop ? getCoverCropName(state.coverCropId) : (isUa ? "Без покриву" : "None");
               return `<tr>
                 <td>${ry.year}</td>
-                <td><strong>${escapeHtml(cName)}</strong> (${c.family})</td>
-                <td>${escapeHtml(c.windowLabel)}</td>
-                <td>${c.rootDepthCm} cm</td>
+                <td><strong>${escapeHtml(cName)}</strong> (${escapeHtml(cFam)})</td>
+                <td>${escapeHtml(cWin)}</td>
+                <td>${c.rootDepthCm} ${isUa ? "см" : "cm"}</td>
                 <td>${escapeHtml(coverTitle)}${state.useNoTill ? " / No-Till" : ""}</td>
-                <td>${ry.waterEndMm} mm (vs ${ty.waterEndMm})</td>
-                <td>$${ry.marginUsdHa} (vs $${ty.marginUsdHa})</td>
+                <td>${ry.waterEndMm} ${isUa ? "мм" : "mm"} (${isUa ? "проти" : "vs"} ${ty.waterEndMm})</td>
+                <td>$${ry.marginUsdHa} (${isUa ? "проти" : "vs"} $${ty.marginUsdHa})</td>
               </tr>`;
             })
             .join("")}
         </tbody>
       </table>
 
-      <div class="ps-section-title">Agronomic Diagnostics &amp; Risk Controls</div>
+      <div class="ps-section-title">${diagTitle}</div>
       <ul style="margin:4px 0 10px;padding-left:16px;">
         ${recSim.alerts.map((a) => `<li>${escapeHtml(a.text)}</li>`).join("")}
       </ul>
 
       <div class="ps-footer">
-        Field Shift Agronomic GIS Decision Support &middot; Models powered by NASA POWER Climatology, SMAP Root Moisture, Open-Meteo ECMWF &amp; ISRIC SoilGrids v2.0.
+        ${isUa
+          ? "Система підтримки агрономічних рішень Field Shift GIS \u00B7 Розрахунки на базі кліматології NASA POWER, вологості SMAP, Open-Meteo ECMWF та ISRIC SoilGrids v2.0."
+          : "Field Shift Agronomic GIS Decision Support \u00B7 Models powered by NASA POWER Climatology, SMAP Root Moisture, Open-Meteo ECMWF & ISRIC SoilGrids v2.0."}
       </div>
     `;
   }
@@ -1728,9 +1904,15 @@
 
       ctx.fillStyle = "#6B7280";
       ctx.textAlign = "center";
-      ctx.fillText(MONTHS[i].slice(0, 1), cx, h - 8);
+      const monthInitial = state.lang === "ua"
+        ? ["С", "Л", "Б", "К", "Т", "Ч", "Л", "С", "В", "Ж", "Л", "Г"][i]
+        : MONTHS[i].slice(0, 1);
+      ctx.fillText(monthInitial, cx, h - 8);
 
-      hoverItems.push({ x: cx, label: MONTHS[i], rain: rain[i], et: et[i] });
+      const monthLabel = state.lang === "ua"
+        ? ["Січень", "Лютий", "Березень", "Квітень", "Травень", "Червень", "Липень", "Серпень", "Вересень", "Жовтень", "Листопад", "Грудень"][i]
+        : MONTHS[i];
+      hoverItems.push({ x: cx, label: monthLabel, rain: rain[i], et: et[i] });
     }
     ctx.textAlign = "left";
 
@@ -1754,7 +1936,9 @@
     }
 
     canvas._chartMeta = { items: hoverItems };
-    attachChartHover(canvas, $("climateTooltip"), (it) => `<strong>${it.label}</strong><br>Rain: ${it.rain} mm &middot; ET: ${it.et} mm`);
+    attachChartHover(canvas, $("climateTooltip"), (it) => state.lang === "ua"
+      ? `<strong>${it.label}</strong><br>Опади: ${it.rain} мм &middot; ET: ${it.et} мм`
+      : `<strong>${it.label}</strong><br>Rain: ${it.rain} mm &middot; ET: ${it.et} mm`);
   }
 
   function drawWaterChart(field, recSim, tradSim) {
@@ -1771,7 +1955,8 @@
       ...tradSim.yearly.map((y) => y.waterEndMm)
     ];
     const maxVal = Math.max(120, ...allVals) * 1.12;
-    const labels = ["Start", "2027", "2028", "2029", "2030"];
+    const startLabel = state.lang === "ua" ? "Старт" : "Start";
+    const labels = [startLabel, "2027", "2028", "2029", "2030"];
     const recSeries = [field.nasaBaseline.rootAvailableWaterMm, ...recSim.yearly.map((y) => y.waterEndMm)];
     const tradSeries = [field.nasaBaseline.rootAvailableWaterMm, ...tradSim.yearly.map((y) => y.waterEndMm)];
 
@@ -1799,7 +1984,7 @@
     ctx.lineTo(w - pad.right, stressY);
     ctx.stroke();
     ctx.fillStyle = "#DC2626";
-    ctx.fillText("Stress floor", pad.left + 4, stressY - 4);
+    ctx.fillText(state.lang === "ua" ? "Критичний поріг" : "Stress floor", pad.left + 4, stressY - 4);
     ctx.restore();
 
     const stepX = cw / (labels.length - 1);
@@ -1842,7 +2027,9 @@
     ctx.textAlign = "left";
 
     canvas._chartMeta = { items: hoverItems };
-    attachChartHover(canvas, $("waterTooltip"), (it) => `<strong>${it.label}</strong><br>Field Shift: ${it.rec} mm &middot; Trad: ${it.trad} mm`);
+    attachChartHover(canvas, $("waterTooltip"), (it) => state.lang === "ua"
+      ? `<strong>${it.label}</strong><br>Field Shift: ${it.rec} мм &middot; Традиційна: ${it.trad} мм`
+      : `<strong>${it.label}</strong><br>Field Shift: ${it.rec} mm &middot; Trad: ${it.trad} mm`);
   }
 
   function drawProfitChart(recSim, tradSim) {
@@ -1907,7 +2094,9 @@
     ctx.textAlign = "left";
 
     canvas._chartMeta = { items: hoverItems };
-    attachChartHover(canvas, $("profitTooltip"), (it) => `<strong>${it.year} Cumul.</strong><br>Field Shift: $${it.rec}/ha &middot; Trad: $${it.trad}/ha`);
+    attachChartHover(canvas, $("profitTooltip"), (it) => state.lang === "ua"
+      ? `<strong>${it.year} Кумул.</strong><br>Field Shift: $${it.rec}/га &middot; Традиційна: $${it.trad}/га`
+      : `<strong>${it.year} Cumul.</strong><br>Field Shift: $${it.rec}/ha &middot; Trad: $${it.trad}/ha`);
   }
 
   function renderPortfolioModal() {
@@ -1933,14 +2122,18 @@
         totalMarginDeltaUsd += pDiffTotal;
         totalWaterGainWeighted += wDiff * area;
 
+        const fName = getFieldName(f);
+        const fRegion = getFieldRegion(f);
+        const fCountry = getFieldCountry(f);
+        const locLabel = fRegion ? `${fRegion}, ${fCountry}` : fCountry;
         const seqNames = plan.map((id) => getCropShortName(id)).join(" \u2192 ");
         return `<tr class="clickable-row" data-jump-field="${f.id}">
-          <td><strong>${escapeHtml(f.name)}</strong></td>
-          <td>${escapeHtml(f.country)}</td>
+          <td><strong>${escapeHtml(fName)}</strong></td>
+          <td>${escapeHtml(locLabel)}</td>
           <td class="table-num">${area.toFixed(1)}</td>
           <td class="table-num">${f.nasaBaseline.rootMoisturePct}%</td>
           <td style="font-size:11px;">${escapeHtml(seqNames)}</td>
-          <td class="table-num" style="color:${wDiff >= 0 ? "var(--accent)" : "var(--risk-red)"}">${wDiff >= 0 ? "+" : ""}${wDiff} mm</td>
+          <td class="table-num" style="color:${wDiff >= 0 ? "var(--accent)" : "var(--risk-red)"}">${wDiff >= 0 ? "+" : ""}${wDiff} ${state.lang === "ua" ? "мм" : "mm"}</td>
           <td class="table-num" style="color:${pDiffTotal >= 0 ? "var(--accent)" : "var(--risk-red)"}"><strong>${pDiffTotal >= 0 ? "+" : ""}$${pDiffTotal.toLocaleString()}</strong></td>
         </tr>`;
       })
@@ -1957,8 +2150,8 @@
     const lblClickInspect = state.lang === "ua" ? "Клацніть рядок для аналізу" : "Click any row to inspect";
 
     $("portfolioSummaryStrip").innerHTML = `
-      <div class="kpi-cell"><span class="kpi-label">${lblManaged}</span><strong class="kpi-val">${totalHa.toFixed(1)} ha</strong><span class="kpi-sub">${state.fields.length} ${parcelUnit}</span></div>
-      <div class="kpi-cell"><span class="kpi-label">${lblWaterGain}</span><strong class="kpi-val kpi-green">${avgWaterGain >= 0 ? "+" : ""}${avgWaterGain} mm</strong><span class="kpi-sub">${lblReserveDelta}</span></div>
+      <div class="kpi-cell"><span class="kpi-label">${lblManaged}</span><strong class="kpi-val">${totalHa.toFixed(1)} ${state.lang === "ua" ? "га" : "ha"}</strong><span class="kpi-sub">${state.fields.length} ${parcelUnit}</span></div>
+      <div class="kpi-cell"><span class="kpi-label">${lblWaterGain}</span><strong class="kpi-val kpi-green">${avgWaterGain >= 0 ? "+" : ""}${avgWaterGain} ${state.lang === "ua" ? "мм" : "mm"}</strong><span class="kpi-sub">${lblReserveDelta}</span></div>
       <div class="kpi-cell"><span class="kpi-label">${lblProfitDelta}</span><strong class="kpi-val kpi-green">${totalMarginDeltaUsd >= 0 ? "+" : ""}$${totalMarginDeltaUsd.toLocaleString()}</strong><span class="kpi-sub">${lblAcross}</span></div>
       <div class="kpi-cell"><span class="kpi-label">${lblSeason}</span><strong class="kpi-val">2027\u20132030</strong><span class="kpi-sub">${lblClickInspect}</span></div>
     `;
@@ -1966,6 +2159,7 @@
   }
 
   function renderCropLibraryModal() {
+    const isUa = state.lang === "ua";
     const q = $("cropSearchInput").value.trim().toLowerCase();
     const filter = $("cropSeasonFilter").value;
     const rows = Object.values(DATA.crops).filter((c) => {
@@ -1980,12 +2174,14 @@
     $("cropMatrixTableBody").innerHTML = rows
       .map((c) => {
         const margin = c.baseRevenueUsdHa - c.baseCostUsdHa;
+        const fam = getCropFamily(c.id);
+        const win = getCropWindow(c.id);
         return `<tr>
-          <td><strong>${escapeHtml(getCropName(c.id))}</strong><br><span style="font-size:10.5px;color:var(--ink-muted)">${escapeHtml(c.family)}</span></td>
-          <td style="font-size:11px;">${escapeHtml(c.windowLabel)}</td>
-          <td class="table-num">${c.waterNeedMm} mm</td>
-          <td class="table-num">${c.rootDepthCm} cm</td>
-          <td class="table-num">${c.nitrogenBalanceKg >= 0 ? "+" : ""}${c.nitrogenBalanceKg} kg</td>
+          <td><strong>${escapeHtml(getCropName(c.id))}</strong><br><span style="font-size:10.5px;color:var(--ink-muted)">${escapeHtml(fam)}</span></td>
+          <td style="font-size:11px;">${escapeHtml(win)}</td>
+          <td class="table-num">${c.waterNeedMm} ${isUa ? "мм" : "mm"}</td>
+          <td class="table-num">${c.rootDepthCm} ${isUa ? "см" : "cm"}</td>
+          <td class="table-num">${c.nitrogenBalanceKg >= 0 ? "+" : ""}${c.nitrogenBalanceKg} ${isUa ? "кг" : "kg"}</td>
           <td class="table-num">${c.heatLimitC}\u00B0C</td>
           <td class="table-num">${c.droughtTolerance}/100</td>
           <td class="table-num"><strong>$${margin}</strong></td>
@@ -1995,12 +2191,18 @@
   }
 
   function renderScienceModal() {
+    const isUa = state.lang === "ua";
     $("scienceSourcesGrid").innerHTML = DATA.nasaSources
-      .map((s) => `<div class="science-card">
-        <span class="science-code">${escapeHtml(s.code)} &middot; ${escapeHtml(s.resolution)}</span>
-        <h4>${escapeHtml(s.title)}</h4>
-        <p>${escapeHtml(s.parameter)} \u2014 ${escapeHtml(s.role)}</p>
-      </div>`)
+      .map((s) => {
+        const title = isUa && s.title_ua ? s.title_ua : s.title;
+        const res = isUa && s.resolution_ua ? s.resolution_ua : s.resolution;
+        const role = isUa && s.role_ua ? s.role_ua : s.role;
+        return `<div class="science-card">
+          <span class="science-code">${escapeHtml(s.code)} &middot; ${escapeHtml(res)}</span>
+          <h4>${escapeHtml(title)}</h4>
+          <p>${escapeHtml(s.parameter)} \u2014 ${escapeHtml(role)}</p>
+        </div>`;
+      })
       .join("");
   }
 

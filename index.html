@@ -185,7 +185,7 @@
 
         <button type="button" id="inspectorExpandTab" class="edge-expand-tab edge-expand-right is-hidden" title="Show Field Inspector">
           <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
-          <span>Inspector</span>
+          <span data-i18n="btnInspector">Inspector</span>
         </button>
       </main>
 
@@ -208,7 +208,7 @@
             <div class="inspector-header-actions">
               <button type="button" id="redrawPolygonBtn" class="btn-outline-xs" title="Edit or redraw this parcel's boundary on map" aria-label="Redraw boundary">
                 <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.375 2.625a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4Z"/></svg>
-                <span>Redraw</span>
+                <span data-i18n="redrawBoundary">Redraw</span>
               </button>
               <button type="button" id="syncTelemetryBtn" class="icon-btn" title="Refresh live NASA POWER, Open-Meteo &amp; SoilGrids" aria-label="Refresh satellite sync">
                 <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 16h5v5"/></svg>
@@ -389,7 +389,7 @@
               <div id="rotationGantt" class="gantt-wrapper">
                 <div class="gantt-header-row">
                   <div class="gantt-col-crop" data-i18n="colSeasonCrop">Season &amp; Crop</div>
-                  <div class="gantt-months-head">
+                  <div id="ganttMonthsHead" class="gantt-months-head">
                     <span>J</span><span>F</span><span>M</span><span>A</span><span>M</span><span>J</span><span>J</span><span>A</span><span>S</span><span>O</span><span>N</span><span>D</span>
                   </div>
                 </div>
@@ -433,7 +433,7 @@
             </div>
 
             <div class="panel-card">
-              <h3 class="card-title">Rotation Diagnostics &amp; Disease Guard</h3>
+              <h3 class="card-title" data-i18n="rotationAlertsHeading">Rotation Diagnostics &amp; Disease Guard</h3>
               <div id="agronomyAlerts" class="alerts-list"></div>
             </div>
           </section>
@@ -572,13 +572,13 @@
             <table class="data-table">
               <thead>
                 <tr>
-                  <th>Field</th>
-                  <th>Region</th>
-                  <th>Area (ha)</th>
-                  <th>Soil Moisture</th>
-                  <th>4-Yr Rotation</th>
-                  <th>Water Gain</th>
-                  <th>Portfolio Profit &Delta;</th>
+                  <th data-i18n="thField">Field</th>
+                  <th data-i18n="thRegion">Region</th>
+                  <th data-i18n="thArea">Area (ha)</th>
+                  <th data-i18n="thSoilMoisture">Soil Moisture</th>
+                  <th data-i18n="th4YrRotation">4-Yr Rotation</th>
+                  <th data-i18n="thWaterGain">Water Gain</th>
+                  <th data-i18n="thPortfolioProfit">Portfolio Profit &Delta;</th>
                 </tr>
               </thead>
               <tbody id="portfolioTableBody"></tbody>
@@ -599,26 +599,26 @@
         </div>
         <div class="page-surface-card">
           <div class="page-filter-row">
-            <input type="text" id="cropSearchInput" class="input-ctrl" placeholder="Filter crops by name or family...">
+            <input type="text" id="cropSearchInput" class="input-ctrl" placeholder="Filter crops by name or family..." data-i18n-ph="cropSearchPlaceholder">
             <select id="cropSeasonFilter" class="input-ctrl" style="max-width:220px;">
-              <option value="all">All Drought Ratings</option>
-              <option value="high">High Drought Tolerance (&ge;70)</option>
-              <option value="winter">Overwintering Crops</option>
-              <option value="legume">Nitrogen Fixers (+N)</option>
+              <option value="all" data-i18n="optAllDrought">All Drought Ratings</option>
+              <option value="high" data-i18n="optHighDrought">High Drought Tolerance (&ge;70)</option>
+              <option value="winter" data-i18n="optWinterCrops">Overwintering Crops</option>
+              <option value="legume" data-i18n="optLegumeCrops">Nitrogen Fixers (+N)</option>
             </select>
           </div>
           <div class="table-scroll">
             <table class="data-table">
               <thead>
                 <tr>
-                  <th>Crop</th>
-                  <th>Window</th>
-                  <th>Water (mm)</th>
-                  <th>Root (cm)</th>
-                  <th>N Bal (kg/ha)</th>
-                  <th>Heat Limit</th>
-                  <th>Drought Score</th>
-                  <th>Est. Margin/ha</th>
+                  <th data-i18n="thCrop">Crop</th>
+                  <th data-i18n="thWindow">Window</th>
+                  <th data-i18n="thWaterMm">Water (mm)</th>
+                  <th data-i18n="thRootCm">Root (cm)</th>
+                  <th data-i18n="thNBal">N Bal (kg/ha)</th>
+                  <th data-i18n="thHeatLimit">Heat Limit</th>
+                  <th data-i18n="thDroughtScore">Drought Score</th>
+                  <th data-i18n="thEstMargin">Est. Margin/ha</th>
                 </tr>
               </thead>
               <tbody id="cropMatrixTableBody"></tbody>
@@ -639,12 +639,12 @@
         </div>
         <div id="scienceSourcesGrid" class="science-grid"></div>
         <div class="formula-card page-formula-card">
-          <h4>Multi-Year Agronomic Scoring Engine</h4>
-          <p>For each year <em>t</em> &isin; {1, 2, 3, 4}, Field Shift models available root-zone moisture balance:</p>
+          <h4 data-i18n="scienceEngineTitle">Multi-Year Agronomic Scoring Engine</h4>
+          <p data-i18n="scienceEngineIntro">For each year <em>t</em> &isin; {1, 2, 3, 4}, Field Shift models available root-zone moisture balance:</p>
           <p class="formula-line">
             W<sub>t</sub> = min(AWC, W<sub>t&minus;1</sub> + P<sub>eff</sub> &minus; ET<sub>crop</sub>(t) + &Delta;W<sub>cover</sub> + &Delta;W<sub>tillage</sub>)
           </p>
-          <p>Simultaneously tracking nitrogen carryover N<sub>t</sub> (kg/ha), host-pathogen return intervals (blocking consecutive Sclerotinia hosts like <code>Sunflower &rarr; Soybean &rarr; Rapeseed</code>), and flowering heat-stress penalties whenever NASA <code>T2M_MAX</code> exceeds each crop's biological ceiling.</p>
+          <p data-i18n="scienceEngineDetails">Simultaneously tracking nitrogen carryover N<sub>t</sub> (kg/ha), host-pathogen return intervals (blocking consecutive Sclerotinia hosts like <code>Sunflower &rarr; Soybean &rarr; Rapeseed</code>), and flowering heat-stress penalties whenever NASA <code>T2M_MAX</code> exceeds each crop's biological ceiling.</p>
         </div>
       </div>
     </section>
@@ -661,7 +661,7 @@
       <div class="modal-form-stack">
         <label class="field-input-group">
           <span data-i18n="labelParcelName">Parcel Name</span>
-          <input type="text" id="newFieldNameInput" class="input-ctrl" placeholder="e.g., North Pivot #4">
+          <input type="text" id="newFieldNameInput" class="input-ctrl" placeholder="e.g., North Pivot #4" data-i18n-ph="newFieldPlaceholder">
         </label>
         <label class="field-input-group">
           <span data-i18n="labelPrevCrop">Previous Crop Harvested (2026)</span>
