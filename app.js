@@ -33,6 +33,7 @@
   ];
 
   const state = {
+    lang: localStorage.getItem("field_shift_lang") || "en",
     fields: [],
     activeFieldId: null,
     activeView: "workspace",
@@ -75,6 +76,111 @@
   let probePopup = null;
 
   const $ = (id) => document.getElementById(id);
+
+  function t(key, fallback = "") {
+    const lang = state.lang || "en";
+    return DATA.i18n?.[lang]?.[key] || DATA.i18n?.en?.[key] || fallback || key;
+  }
+
+  function getCropName(cropId) {
+    const c = DATA.crops[cropId];
+    if (!c) return cropId || "";
+    if (state.lang === "ua" && DATA.i18n?.crops?.[cropId]?.name_ua) {
+      return DATA.i18n.crops[cropId].name_ua;
+    }
+    return c.name;
+  }
+
+  function getCropShortName(cropId) {
+    const c = DATA.crops[cropId];
+    if (!c) return cropId || "";
+    if (state.lang === "ua" && DATA.i18n?.crops?.[cropId]?.shortName_ua) {
+      return DATA.i18n.crops[cropId].shortName_ua;
+    }
+    return c.shortName;
+  }
+
+  function getCropBadge(cropId) {
+    const c = DATA.crops[cropId];
+    if (!c) return "";
+    if (state.lang === "ua" && DATA.i18n?.crops?.[cropId]?.badge_ua) {
+      return DATA.i18n.crops[cropId].badge_ua;
+    }
+    return c.categoryBadge;
+  }
+
+  function getSoilName(soilId) {
+    const s = DATA.soilTypes[soilId];
+    if (!s) return soilId || "";
+    if (state.lang === "ua" && DATA.i18n?.soils?.[soilId]?.name_ua) {
+      return DATA.i18n.soils[soilId].name_ua;
+    }
+    return s.name;
+  }
+
+  function getCoverCropName(coverId) {
+    const cb = DATA.coverCropBridges[coverId];
+    if (!cb) return coverId || "";
+    if (state.lang === "ua" && DATA.i18n?.cover?.[coverId]?.name_ua) {
+      return DATA.i18n.cover[coverId].name_ua;
+    }
+    return cb.name;
+  }
+
+  function getPriorityModeLabel(modeId) {
+    const m = DATA.priorityModes[modeId];
+    if (!m) return modeId || "";
+    if (state.lang === "ua" && DATA.i18n?.modes?.[modeId]?.label_ua) {
+      return DATA.i18n.modes[modeId].label_ua;
+    }
+    return m.label;
+  }
+
+  function getPriorityModeDesc(modeId) {
+    const m = DATA.priorityModes[modeId];
+    if (!m) return "";
+    if (state.lang === "ua" && DATA.i18n?.modes?.[modeId]?.desc_ua) {
+      return DATA.i18n.modes[modeId].desc_ua;
+    }
+    return m.shortDesc;
+  }
+
+  function applyStaticTranslations() {
+    const isUa = state.lang === "ua";
+    document.querySelectorAll("[data-i18n]").forEach((el) => {
+      const key = el.dataset.i18n;
+      const text = t(key);
+      if (text) el.textContent = text;
+    });
+    document.querySelectorAll("[data-i18n-ph]").forEach((el) => {
+      const key = el.dataset.i18nPh;
+      const text = t(key);
+      if (text) el.placeholder = text;
+    });
+    document.querySelectorAll("[data-i18n-title]").forEach((el) => {
+      const key = el.dataset.i18nTitle;
+      const text = t(key);
+      if (text) el.title = text;
+    });
+
+    const btnEn = $("langBtnEn");
+    const btnUa = $("langBtnUa");
+    if (btnEn) btnEn.classList.toggle("is-active", !isUa);
+    if (btnUa) btnUa.classList.toggle("is-active", isUa);
+    document.documentElement.lang = isUa ? "uk" : "en";
+  }
+
+  function setLanguage(newLang) {
+    if (state.lang === newLang) return;
+    state.lang = newLang;
+    try {
+      localStorage.setItem("field_shift_lang", newLang);
+    } catch (_e) {}
+    applyStaticTranslations();
+    populateStaticSelects();
+    renderAll();
+    showToast(newLang === "ua" ? "Мову інтерфейсу переключено на українську" : "Interface language switched to English");
+  }
 
   function clamp(val, min, max) {
     return Math.min(max, Math.max(min, val));
@@ -1159,11 +1265,12 @@
     }
 
     const totalHa = state.fields.reduce((s, f) => s + Number(f.defaultAreaHa || 0), 0);
-    $("sidebarTotalHa").textContent = `${totalHa.toFixed(1)} ha \u00B7 ${state.fields.length} parcels`;
-    $("headerParcelsLabel").textContent = `Parcels (${state.fields.length})`;
+    const parcelUnit = state.lang === "ua" ? "ділянок" : "parcels";
+    $("sidebarTotalHa").textContent = `${totalHa.toFixed(1)} ha \u00B7 ${state.fields.length} ${parcelUnit}`;
+    $("headerParcelsLabel").textContent = `${t("parcelsHeader")} (${state.fields.length})`;
 
     if (!arr.length) {
-      list.innerHTML = `<div class="panel-card" style="text-align:center;color:var(--ink-muted);">No matching local parcels. Pick a global place above or click the map.</div>`;
+      list.innerHTML = `<div class="panel-card" style="text-align:center;color:var(--ink-muted);">${state.lang === "ua" ? "Немає відповідних ділянок. Оберіть місце вище або клацніть на карту." : "No matching local parcels. Pick a global place above or click the map."}</div>`;
       return;
     }
 
@@ -1172,10 +1279,13 @@
         const isActive = f.id === state.activeFieldId;
         const score = f.nasaBaseline.droughtRiskScore;
         const riskCls = score >= 68 ? "dot-high" : score >= 45 ? "dot-mod" : "dot-low";
-        const prevCropName = DATA.crops[f.defaultPrevCrop]?.shortName || f.defaultPrevCrop;
-        const badge = f.isDemo ? `<span class="tag-demo">Benchmark</span>` : `<span class="tag-custom">Saved</span>`;
+        const prevCropName = getCropShortName(f.defaultPrevCrop);
+        const prevLabel = state.lang === "ua" ? "Попер" : "Prev";
+        const badge = f.isDemo
+          ? `<span class="tag-demo">${state.lang === "ua" ? "Еталон" : "Benchmark"}</span>`
+          : `<span class="tag-custom">${state.lang === "ua" ? "Збережено" : "Saved"}</span>`;
         const delBtn = !f.isDemo
-          ? `<button type="button" class="field-del-btn" data-del-id="${f.id}" title="Delete parcel">\u00D7</button>`
+          ? `<button type="button" class="field-del-btn" data-del-id="${f.id}" title="${state.lang === "ua" ? "Видалити ділянку" : "Delete parcel"}">\u00D7</button>`
           : "";
 
         return `<div class="field-card ${isActive ? "is-active" : ""}" data-field-id="${f.id}" role="listitem" tabindex="0">
@@ -1185,10 +1295,10 @@
               <span class="field-card-name">${escapeHtml(f.name)}</span>
               ${badge}
             </div>
-            <div class="field-card-sub">${Number(f.defaultAreaHa).toFixed(1)} ha &middot; Prev: ${escapeHtml(prevCropName)}</div>
+            <div class="field-card-sub">${Number(f.defaultAreaHa).toFixed(1)} ha &middot; ${prevLabel}: ${escapeHtml(prevCropName)}</div>
           </div>
           <div class="field-card-right">
-            <span class="risk-dot-row" title="Drought risk ${score}/100"><i class="dot-risk ${riskCls}"></i>${score}</span>
+            <span class="risk-dot-row" title="${state.lang === "ua" ? "Ризик посухи" : "Drought risk"} ${score}/100"><i class="dot-risk ${riskCls}"></i>${score}</span>
             ${delBtn}
           </div>
         </div>`;
@@ -1201,10 +1311,14 @@
     const riskScore = field.nasaBaseline.droughtRiskScore;
     const riskBadge = $("inspectorRiskBadge");
     riskBadge.className = `risk-pill ${riskScore >= 68 ? "risk-high" : riskScore >= 45 ? "risk-mod" : "risk-low"}`;
-    riskBadge.textContent = `Risk ${riskScore}/100`;
+    riskBadge.textContent = `${state.lang === "ua" ? "Ризик" : "Risk"} ${riskScore}/100`;
+
+    const soilShort = state.lang === "ua" && DATA.i18n?.soils?.[eff.soil.id]?.shortName_ua
+      ? DATA.i18n.soils[eff.soil.id].shortName_ua
+      : eff.soil.shortName;
 
     $("inspectorFieldName").textContent = field.name;
-    $("inspectorFieldMeta").textContent = `${Number(eff.areaHa).toFixed(1)} ha \u00B7 ${field.region}, ${field.country} \u00B7 ${eff.soil.shortName}`;
+    $("inspectorFieldMeta").textContent = `${Number(eff.areaHa).toFixed(1)} ha \u00B7 ${field.region}, ${field.country} \u00B7 ${soilShort}`;
 
     $("hudFieldTitle").textContent = field.name;
     if (state.liveCurrent) {
@@ -1285,11 +1399,12 @@
   }
 
   function renderRotationTab(field, recSim, tradSim) {
-    $("rotationScoreBadge").textContent = `Plan Score ${recSim.compositeScore}/100`;
+    const scoreWord = state.lang === "ua" ? "Бал плану" : "Plan Score";
+    $("rotationScoreBadge").textContent = `${scoreWord} ${recSim.compositeScore}/100`;
 
     const modeContainer = $("priorityModeGroup");
     modeContainer.innerHTML = Object.values(DATA.priorityModes)
-      .map((m) => `<button type="button" class="preset-btn ${state.priorityMode === m.id ? "is-active" : ""}" data-mode="${m.id}">${escapeHtml(m.label)}</button>`)
+      .map((m) => `<button type="button" class="preset-btn ${state.priorityMode === m.id ? "is-active" : ""}" data-mode="${m.id}">${escapeHtml(getPriorityModeLabel(m.id))}</button>`)
       .join("");
 
     $("weightWaterSlider").value = state.weights.water;
@@ -1306,7 +1421,10 @@
 
     const waterDiff = recSim.avgWaterMm - tradSim.avgWaterMm;
     const profitDiff = recSim.totalMarginUsdHa - tradSim.totalMarginUsdHa;
-    $("rotationDeltaNote").textContent = `vs. traditional (${tradSim.compositeScore}/100): ${waterDiff >= 0 ? "+" : ""}${waterDiff} mm root moisture avg \u00B7 ${profitDiff >= 0 ? "+" : ""}$${profitDiff}/ha over 4 years`;
+    const vsTrad = state.lang === "ua" ? "проти традиційної" : "vs. traditional";
+    const rootMoistAvg = state.lang === "ua" ? "вологи коренів (сер.)" : "root moisture avg";
+    const over4yr = state.lang === "ua" ? "за 4 роки" : "over 4 years";
+    $("rotationDeltaNote").textContent = `${vsTrad} (${tradSim.compositeScore}/100): ${waterDiff >= 0 ? "+" : ""}${waterDiff} mm ${rootMoistAvg} \u00B7 ${profitDiff >= 0 ? "+" : ""}$${profitDiff}/ha ${over4yr}`;
 
     for (let yr = 0; yr < 4; yr += 1) {
       const sel = $(`year${yr + 1}Select`);
@@ -1314,6 +1432,7 @@
       sel.value = cropId;
       const crop = DATA.crops[cropId] || DATA.crops.winter_wheat;
       const simYr = recSim.yearly[yr];
+      const cropShort = getCropShortName(cropId);
 
       $(`ganttMeta${yr + 1}`).textContent = `${crop.rootDepthCm}cm \u00B7 ${crop.nitrogenBalanceKg >= 0 ? "+" : ""}${crop.nitrogenBalanceKg}kg N \u00B7 $${simYr.marginUsdHa}/ha`;
 
@@ -1327,23 +1446,23 @@
       if (!crop.overwinters) {
         const leftPct = ((crop.sowMonth - 1) / 12) * 100;
         const widthPct = ((crop.harvestMonth - crop.sowMonth + 1) / 12) * 100;
-        barsHtml += `<div class="gantt-bar ${catCls}" style="left:${leftPct.toFixed(2)}%;width:${widthPct.toFixed(2)}%;" title="${escapeHtml(crop.shortName)} (${escapeHtml(crop.windowLabel)})">${escapeHtml(crop.shortName)}</div>`;
+        barsHtml += `<div class="gantt-bar ${catCls}" style="left:${leftPct.toFixed(2)}%;width:${widthPct.toFixed(2)}%;" title="${escapeHtml(cropShort)} (${escapeHtml(crop.windowLabel)})">${escapeHtml(cropShort)}</div>`;
         if (state.useCoverCrop && crop.harvestMonth < 12) {
           const covLeft = (crop.harvestMonth / 12) * 100;
           const covW = ((12 - crop.harvestMonth) / 12) * 100;
-          barsHtml += `<div class="gantt-bar cat-cover" style="left:${covLeft.toFixed(2)}%;width:${covW.toFixed(2)}%;" title="Winter Cover Crop">Cover</div>`;
+          barsHtml += `<div class="gantt-bar cat-cover" style="left:${covLeft.toFixed(2)}%;width:${covW.toFixed(2)}%;" title="${state.lang === "ua" ? "Покривна культура" : "Winter Cover Crop"}">${state.lang === "ua" ? "Покрив" : "Cover"}</div>`;
         }
       } else {
         const springW = (crop.harvestMonth / 12) * 100;
         const fallLeft = ((crop.sowMonth - 1) / 12) * 100;
         const fallW = ((13 - crop.sowMonth) / 12) * 100;
-        barsHtml += `<div class="gantt-bar ${catCls}" style="left:0%;width:${springW.toFixed(2)}%;" title="Harvest ${MONTHS[crop.harvestMonth - 1]}">${escapeHtml(crop.shortName)} Harvest</div>`;
+        barsHtml += `<div class="gantt-bar ${catCls}" style="left:0%;width:${springW.toFixed(2)}%;" title="${state.lang === "ua" ? "Збір" : "Harvest"} ${MONTHS[crop.harvestMonth - 1]}">${escapeHtml(cropShort)} ${state.lang === "ua" ? "Збір" : "Harvest"}</div>`;
         if (state.useCoverCrop && crop.harvestMonth + 1 < crop.sowMonth) {
           const gapLeft = (crop.harvestMonth / 12) * 100;
           const gapW = ((crop.sowMonth - 1 - crop.harvestMonth) / 12) * 100;
-          barsHtml += `<div class="gantt-bar cat-cover" style="left:${gapLeft.toFixed(2)}%;width:${gapW.toFixed(2)}%;" title="Summer Catch Cover">Cover</div>`;
+          barsHtml += `<div class="gantt-bar cat-cover" style="left:${gapLeft.toFixed(2)}%;width:${gapW.toFixed(2)}%;" title="${state.lang === "ua" ? "Літній сидерат" : "Summer Catch Cover"}">${state.lang === "ua" ? "Покрив" : "Cover"}</div>`;
         }
-        barsHtml += `<div class="gantt-bar ${catCls}" style="left:${fallLeft.toFixed(2)}%;width:${fallW.toFixed(2)}%;" title="Sow ${MONTHS[crop.sowMonth - 1]}">Sow</div>`;
+        barsHtml += `<div class="gantt-bar ${catCls}" style="left:${fallLeft.toFixed(2)}%;width:${fallW.toFixed(2)}%;" title="${state.lang === "ua" ? "Сівба" : "Sow"} ${MONTHS[crop.sowMonth - 1]}">${state.lang === "ua" ? "Сівба" : "Sow"}</div>`;
       }
 
       track.innerHTML = grid + barsHtml;
@@ -1382,8 +1501,8 @@
         const mDiff = ry.marginUsdHa - ty.marginUsdHa;
         return `<tr>
           <td class="table-num">${ry.year}</td>
-          <td><strong>${escapeHtml(ry.shortName)}</strong></td>
-          <td style="color:var(--ink-muted)">${escapeHtml(ty.shortName)}</td>
+          <td><strong>${escapeHtml(getCropShortName(ry.cropId))}</strong></td>
+          <td style="color:var(--ink-muted)">${escapeHtml(getCropShortName(ty.cropId))}</td>
           <td class="table-num">${ry.waterEndMm} mm <span style="color:var(--ink-muted)">(${ty.waterEndMm})</span></td>
           <td class="table-num"><strong>$${ry.marginUsdHa}</strong> <span style="color:${mDiff >= 0 ? "var(--accent)" : "var(--risk-red)"}">(${mDiff >= 0 ? "+" : ""}${mDiff})</span></td>
         </tr>`;
@@ -1397,37 +1516,53 @@
   function renderReportTab(field, recSim, tradSim) {
     const eff = getEffectiveSoilAndField(field);
     const cover = DATA.coverCropBridges[state.coverCropId];
-    const modeObj = DATA.priorityModes[state.priorityMode];
     const waterDiff = recSim.avgWaterMm - tradSim.avgWaterMm;
     const marginDiffHa = recSim.totalMarginUsdHa - tradSim.totalMarginUsdHa;
 
-    $("reportVerdictTitle").textContent = `${modeObj ? modeObj.label : "Custom"} — ${field.name}`;
-    $("reportVerdictDesc").textContent = `Prescribed 4-year sequence improves root-zone moisture reserve by ${waterDiff >= 0 ? "+" : ""}${waterDiff} mm and delivers ${marginDiffHa >= 0 ? "+" : ""}$${marginDiffHa}/ha vs regional baseline.`;
-    $("reportFieldMeta").textContent = `Parcel Area: ${eff.areaHa.toFixed(1)} ha \u00B7 Soil: ${eff.soil.name} (pH ${eff.ph}, SOM ${eff.somPct}%) \u00B7 Prev Crop: ${DATA.crops[eff.prevCrop]?.shortName}`;
+    $("reportVerdictTitle").textContent = `${getPriorityModeLabel(state.priorityMode) || "Custom"} — ${field.name}`;
+    if (state.lang === "ua") {
+      $("reportVerdictDesc").textContent = `Призначена 4-річна сівозміна збільшує запас вологи кореневого шару на ${waterDiff >= 0 ? "+" : ""}${waterDiff} мм і забезпечує ${marginDiffHa >= 0 ? "+" : ""}$${marginDiffHa}/га порівняно з базовою практикою.`;
+      $("reportFieldMeta").textContent = `Площа: ${eff.areaHa.toFixed(1)} га \u00B7 Ґрунт: ${getSoilName(eff.soil.id)} (pH ${eff.ph}, SOM ${eff.somPct}%) \u00B7 Попередник: ${getCropShortName(eff.prevCrop)}`;
+    } else {
+      $("reportVerdictDesc").textContent = `Prescribed 4-year sequence improves root-zone moisture reserve by ${waterDiff >= 0 ? "+" : ""}${waterDiff} mm and delivers ${marginDiffHa >= 0 ? "+" : ""}$${marginDiffHa}/ha vs regional baseline.`;
+      $("reportFieldMeta").textContent = `Parcel Area: ${eff.areaHa.toFixed(1)} ha \u00B7 Soil: ${eff.soil.name} (pH ${eff.ph}, SOM ${eff.somPct}%) \u00B7 Prev Crop: ${DATA.crops[eff.prevCrop]?.shortName}`;
+    }
 
     $("reportScheduleBody").innerHTML = recSim.yearly
       .map((ry) => {
         const c = DATA.crops[ry.cropId];
+        const coverName = state.useCoverCrop ? getCoverCropName(state.coverCropId) : (state.lang === "ua" ? "Чистий пар" : "Bare fallow");
         return `<tr>
           <td class="table-num">${ry.year}</td>
-          <td><strong>${escapeHtml(c.name)}</strong><br><span style="font-size:10.5px;color:var(--ink-muted)">${escapeHtml(c.windowLabel)}</span></td>
-          <td>${state.useCoverCrop ? escapeHtml(cover.name) : "Bare fallow"}${state.useNoTill ? " + No-Till" : ""}</td>
+          <td><strong>${escapeHtml(getCropName(ry.cropId))}</strong><br><span style="font-size:10.5px;color:var(--ink-muted)">${escapeHtml(c.windowLabel)}</span></td>
+          <td>${escapeHtml(coverName)}${state.useNoTill ? " + No-Till" : ""}</td>
           <td class="table-num">$${ry.marginUsdHa}</td>
           <td class="table-num">${ry.waterEndMm} mm</td>
         </tr>`;
       })
       .join("");
 
-    const tasks = [
-      `Establish ${DATA.crops[recSim.yearly[0].cropId].name} (${DATA.crops[recSim.yearly[0].cropId].windowLabel}) directly following ${DATA.crops[eff.prevCrop]?.name || eff.prevCrop} residue.`,
-      state.useCoverCrop
-        ? `Seed ${cover.name} immediately after harvest gaps to retain ~${cover.waterRetentionBonusMm || 20} mm moisture and supply +${cover.nBonusKg || 25} kg/ha N.`
-        : "Monitor winter soil moisture evaporation monthly using NASA SMAP updates.",
-      state.useNoTill
-        ? "Maintain zero/strip-till stubble to shield topsoil temperature and boost rainwater infiltration."
-        : "Minimize deep inversion passes prior to dry spring planting windows.",
-      "Review Open-Meteo 7-day soil temperature before nitrogen side-dress applications."
-    ];
+    const tasks = state.lang === "ua"
+      ? [
+          `Сівба культури ${getCropName(recSim.yearly[0].cropId)} (${DATA.crops[recSim.yearly[0].cropId].windowLabel}) одразу після пожнивних решток ${getCropName(eff.prevCrop)}.`,
+          state.useCoverCrop
+            ? `Висів сидерату ${getCoverCropName(state.coverCropId)} одразу у післяжнивні вікна для збереження ~${cover.waterRetentionBonusMm || 20} мм вологи та накопичення +${cover.nBonusKg || 25} кг/га N.`
+            : "Щомісячний моніторинг зимового випаровування вологи за супутниковими оновленнями NASA SMAP.",
+          state.useNoTill
+            ? "Збереження стерні та покривного мульчування (No-Till) для охолодження ґрунту та кращої інфільтрації дощу."
+            : "Мінімізація глибокої оранки перед посушливими весняними вікнами сівби.",
+          "Контроль 7-денної температури ґрунту за Open-Meteo перед внесенням підживлень азотом."
+        ]
+      : [
+          `Establish ${DATA.crops[recSim.yearly[0].cropId].name} (${DATA.crops[recSim.yearly[0].cropId].windowLabel}) directly following ${DATA.crops[eff.prevCrop]?.name || eff.prevCrop} residue.`,
+          state.useCoverCrop
+            ? `Seed ${cover.name} immediately after harvest gaps to retain ~${cover.waterRetentionBonusMm || 20} mm moisture and supply +${cover.nBonusKg || 25} kg/ha N.`
+            : "Monitor winter soil moisture evaporation monthly using NASA SMAP updates.",
+          state.useNoTill
+            ? "Maintain zero/strip-till stubble to shield topsoil temperature and boost rainwater infiltration."
+            : "Minimize deep inversion passes prior to dry spring planting windows.",
+          "Review Open-Meteo 7-day soil temperature before nitrogen side-dress applications."
+        ];
     $("reportChecklist").innerHTML = tasks.map((t) => `<li>${escapeHtml(t)}</li>`).join("");
   }
 
@@ -1469,12 +1604,14 @@
             .map((ry, idx) => {
               const c = DATA.crops[ry.cropId];
               const ty = tradSim.yearly[idx];
+              const cName = getCropName(ry.cropId);
+              const coverTitle = state.useCoverCrop ? getCoverCropName(state.coverCropId) : (state.lang === "ua" ? "Без покриву" : "None");
               return `<tr>
                 <td>${ry.year}</td>
-                <td><strong>${escapeHtml(c.name)}</strong> (${c.family})</td>
+                <td><strong>${escapeHtml(cName)}</strong> (${c.family})</td>
                 <td>${escapeHtml(c.windowLabel)}</td>
                 <td>${c.rootDepthCm} cm</td>
-                <td>${state.useCoverCrop ? escapeHtml(cover.name) : "None"}${state.useNoTill ? " / No-Till" : ""}</td>
+                <td>${escapeHtml(coverTitle)}${state.useNoTill ? " / No-Till" : ""}</td>
                 <td>${ry.waterEndMm} mm (vs ${ty.waterEndMm})</td>
                 <td>$${ry.marginUsdHa} (vs $${ty.marginUsdHa})</td>
               </tr>`;
@@ -1796,7 +1933,7 @@
         totalMarginDeltaUsd += pDiffTotal;
         totalWaterGainWeighted += wDiff * area;
 
-        const seqNames = plan.map((id) => DATA.crops[id]?.shortName || id).join(" \u2192 ");
+        const seqNames = plan.map((id) => getCropShortName(id)).join(" \u2192 ");
         return `<tr class="clickable-row" data-jump-field="${f.id}">
           <td><strong>${escapeHtml(f.name)}</strong></td>
           <td>${escapeHtml(f.country)}</td>
@@ -1810,11 +1947,20 @@
       .join("");
 
     const avgWaterGain = totalHa ? Math.round(totalWaterGainWeighted / totalHa) : 0;
+    const parcelUnit = state.lang === "ua" ? "ділянок" : "parcels";
+    const lblManaged = state.lang === "ua" ? "Площа господарства" : "Managed Area";
+    const lblWaterGain = state.lang === "ua" ? "Середній приріст вологи" : "Weighted Water Gain";
+    const lblReserveDelta = state.lang === "ua" ? "Приріст запасу коренів" : "Root reserve delta";
+    const lblProfitDelta = state.lang === "ua" ? "Прибуток портфоліо за 4 роки" : "4-Yr Portfolio Profit \u0394";
+    const lblAcross = state.lang === "ua" ? "За всіма ділянками" : "Across all parcels";
+    const lblSeason = state.lang === "ua" ? "Активний цикл" : "Active Season";
+    const lblClickInspect = state.lang === "ua" ? "Клацніть рядок для аналізу" : "Click any row to inspect";
+
     $("portfolioSummaryStrip").innerHTML = `
-      <div class="kpi-cell"><span class="kpi-label">Managed Area</span><strong class="kpi-val">${totalHa.toFixed(1)} ha</strong><span class="kpi-sub">${state.fields.length} parcels</span></div>
-      <div class="kpi-cell"><span class="kpi-label">Weighted Water Gain</span><strong class="kpi-val kpi-green">${avgWaterGain >= 0 ? "+" : ""}${avgWaterGain} mm</strong><span class="kpi-sub">Root reserve delta</span></div>
-      <div class="kpi-cell"><span class="kpi-label">4-Yr Portfolio Profit &Delta;</span><strong class="kpi-val kpi-green">${totalMarginDeltaUsd >= 0 ? "+" : ""}$${totalMarginDeltaUsd.toLocaleString()}</strong><span class="kpi-sub">Across all parcels</span></div>
-      <div class="kpi-cell"><span class="kpi-label">Active Season</span><strong class="kpi-val">2027\u20132030</strong><span class="kpi-sub">Click any row to inspect</span></div>
+      <div class="kpi-cell"><span class="kpi-label">${lblManaged}</span><strong class="kpi-val">${totalHa.toFixed(1)} ha</strong><span class="kpi-sub">${state.fields.length} ${parcelUnit}</span></div>
+      <div class="kpi-cell"><span class="kpi-label">${lblWaterGain}</span><strong class="kpi-val kpi-green">${avgWaterGain >= 0 ? "+" : ""}${avgWaterGain} mm</strong><span class="kpi-sub">${lblReserveDelta}</span></div>
+      <div class="kpi-cell"><span class="kpi-label">${lblProfitDelta}</span><strong class="kpi-val kpi-green">${totalMarginDeltaUsd >= 0 ? "+" : ""}$${totalMarginDeltaUsd.toLocaleString()}</strong><span class="kpi-sub">${lblAcross}</span></div>
+      <div class="kpi-cell"><span class="kpi-label">${lblSeason}</span><strong class="kpi-val">2027\u20132030</strong><span class="kpi-sub">${lblClickInspect}</span></div>
     `;
     $("portfolioTableBody").innerHTML = rowsHtml;
   }
@@ -1823,7 +1969,8 @@
     const q = $("cropSearchInput").value.trim().toLowerCase();
     const filter = $("cropSeasonFilter").value;
     const rows = Object.values(DATA.crops).filter((c) => {
-      if (q && !`${c.name} ${c.family} ${c.summary}`.toLowerCase().includes(q)) return false;
+      const cropUa = DATA.i18n?.crops?.[c.id]?.name_ua || "";
+      if (q && !`${c.name} ${cropUa} ${c.family} ${c.summary}`.toLowerCase().includes(q)) return false;
       if (filter === "high" && c.droughtTolerance < 70) return false;
       if (filter === "winter" && !c.overwinters) return false;
       if (filter === "legume" && c.nitrogenBalanceKg <= 20) return false;
@@ -1834,7 +1981,7 @@
       .map((c) => {
         const margin = c.baseRevenueUsdHa - c.baseCostUsdHa;
         return `<tr>
-          <td><strong>${escapeHtml(c.name)}</strong><br><span style="font-size:10.5px;color:var(--ink-muted)">${escapeHtml(c.family)}</span></td>
+          <td><strong>${escapeHtml(getCropName(c.id))}</strong><br><span style="font-size:10.5px;color:var(--ink-muted)">${escapeHtml(c.family)}</span></td>
           <td style="font-size:11px;">${escapeHtml(c.windowLabel)}</td>
           <td class="table-num">${c.waterNeedMm} mm</td>
           <td class="table-num">${c.rootDepthCm} cm</td>
@@ -1898,23 +2045,23 @@
 
   function populateStaticSelects() {
     const soilOpts = Object.values(DATA.soilTypes)
-      .map((s) => `<option value="${s.id}">${escapeHtml(s.name)}</option>`)
+      .map((s) => `<option value="${s.id}">${escapeHtml(getSoilName(s.id))}</option>`)
       .join("");
     $("soilTypeSelect").innerHTML = soilOpts;
 
     const cropOpts = Object.values(DATA.crops)
-      .map((c) => `<option value="${c.id}">${escapeHtml(c.name)} (${c.categoryBadge})</option>`)
+      .map((c) => `<option value="${c.id}">${escapeHtml(getCropName(c.id))} (${escapeHtml(getCropBadge(c.id))})</option>`)
       .join("");
     $("prevCropSelect").innerHTML = cropOpts;
     $("newFieldPrevCropSelect").innerHTML = cropOpts;
     for (let y = 1; y <= 4; y += 1) {
       $(`year${y}Select`).innerHTML = Object.values(DATA.crops)
-        .map((c) => `<option value="${c.id}">${escapeHtml(c.shortName)} \u2014 ${c.categoryBadge}</option>`)
+        .map((c) => `<option value="${c.id}">${escapeHtml(getCropShortName(c.id))} \u2014 ${escapeHtml(getCropBadge(c.id))}</option>`)
         .join("");
     }
 
     $("coverCropSelect").innerHTML = Object.values(DATA.coverCropBridges)
-      .map((cb) => `<option value="${cb.id}">${escapeHtml(cb.name)}</option>`)
+      .map((cb) => `<option value="${cb.id}">${escapeHtml(getCoverCropName(cb.id))}</option>`)
       .join("");
   }
 
@@ -2157,6 +2304,9 @@
     $("railCropsBtn").addEventListener("click", () => setWorkspaceView("crops"));
     $("railScienceBtn").addEventListener("click", () => setWorkspaceView("science"));
     $("railPrintBtn").addEventListener("click", triggerPrintReport);
+
+    $("langBtnEn")?.addEventListener("click", () => setLanguage("en"));
+    $("langBtnUa")?.addEventListener("click", () => setLanguage("ua"));
 
     $("backToMapPortfolioBtn").addEventListener("click", () => setWorkspaceView("workspace"));
     $("backToMapCropsBtn").addEventListener("click", () => setWorkspaceView("workspace"));
@@ -2440,6 +2590,7 @@
   }
 
   function init() {
+    applyStaticTranslations();
     populateStaticSelects();
     loadStoredFields();
     initMap();
