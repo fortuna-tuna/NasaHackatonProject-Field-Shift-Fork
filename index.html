@@ -27,7 +27,7 @@
 
     <header class="top-command-bar">
       <div class="cmd-left">
-        <button type="button" id="railWorkspaceBtn" class="brand-lockup" title="Field Shift — Toggle Parcels Panel">
+        <div class="brand-lockup" aria-label="Field Shift — NASA Agronomy GIS">
           <span class="brand-emblem">
             <svg viewBox="0 0 24 24" width="18" height="18" fill="none" aria-hidden="true">
               <path d="M4 7.5C8 5.5 13 5.5 17 7.5" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round"/>
@@ -40,11 +40,11 @@
             <strong class="brand-name">Field Shift</strong>
             <span class="brand-tag">NASA Agronomy GIS</span>
           </span>
-        </button>
+        </div>
 
         <div class="cmd-sep"></div>
 
-        <button type="button" id="sidebarExpandTab" class="btn-outline-sm" title="Toggle floating parcels list">
+        <button type="button" id="sidebarExpandTab" class="btn-outline-sm" title="Toggle floating parcels list" data-i18n-title="sidebarExpandTitle">
           <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg>
           <span id="headerParcelsLabel">Parcels (6)</span>
         </button>
@@ -53,36 +53,41 @@
       <nav class="top-nav-pills" aria-label="Workspace views">
         <button type="button" id="railMapBtn" class="top-nav-btn is-active" data-rail="workspace">
           <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"/><line x1="9" y1="3" x2="9" y2="18"/><line x1="15" y1="6" x2="15" y2="21"/></svg>
-          <span>Map Workspace</span>
+          <span data-i18n="navMap">Map Workspace</span>
         </button>
         <button type="button" id="railPortfolioBtn" class="top-nav-btn" data-rail="portfolio">
           <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v18h18"/><path d="M7 16v-5"/><path d="M12 16V7"/><path d="M17 16v-8"/></svg>
-          <span>Farm Portfolio</span>
+          <span data-i18n="navPortfolio">Farm Portfolio</span>
         </button>
         <button type="button" id="railCropsBtn" class="top-nav-btn" data-rail="crops">
           <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 20h10"/><path d="M10 20c5.5-2.5.8-6.4 3-10"/><path d="M9.5 9.4c1.1.8 1.8 2.2 2.3 3.7-2 .4-3.5.4-4.8-.3-1.2-.6-2.3-1.9-3-4.2 2.8-.5 4.4 0 5.5.8z"/><path d="M14.1 6a7 7 0 0 0-1.1 4c1.9-.1 3.3-.6 4.3-1.4 1-1 1.6-2.3 1.7-4.6-2.7.1-4 1-4.9 2z"/></svg>
-          <span>12-Crop Matrix</span>
+          <span data-i18n="navCrops">12-Crop Matrix</span>
         </button>
         <button type="button" id="railScienceBtn" class="top-nav-btn" data-rail="science">
           <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg>
-          <span>NASA Science</span>
+          <span data-i18n="navScience">NASA Science</span>
         </button>
       </nav>
 
       <div class="cmd-right">
         <button type="button" id="btnDrawField" class="btn-primary-sm">
           <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="4" height="4" rx="1"/><rect x="17" y="3" width="4" height="4" rx="1"/><rect x="17" y="17" width="4" height="4" rx="1"/><rect x="3" y="17" width="4" height="4" rx="1"/><line x1="7" y1="5" x2="17" y2="5"/><line x1="19" y1="7" x2="19" y2="17"/><line x1="17" y1="19" x2="7" y2="19"/><line x1="5" y1="17" x2="5" y2="7"/></svg>
-          <span>Draw Field</span>
+          <span data-i18n="btnDrawField">Draw Field</span>
         </button>
         <button type="button" id="btnImportGeo" class="btn-outline-sm" title="Import .geojson polygon">
           <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-          <span>GeoJSON</span>
+          <span data-i18n="btnGeoJson">GeoJSON</span>
         </button>
         <input type="file" id="geoImportInput" accept=".geojson,.json,application/geo+json,application/json" class="is-hidden">
         <button type="button" id="railPrintBtn" class="btn-outline-sm" title="Print 1-Page A4 Action Plan">
           <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><path d="M6 9V3a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v6"/><rect x="6" y="14" width="12" height="8" rx="1"/></svg>
-          <span>Print</span>
+          <span data-i18n="btnPrint">Print</span>
         </button>
+        <div class="cmd-sep"></div>
+        <div class="lang-switcher" role="group" aria-label="Language selection">
+          <button type="button" id="langBtnEn" class="lang-btn is-active" data-lang="en" title="English">EN</button>
+          <button type="button" id="langBtnUa" class="lang-btn" data-lang="ua" title="Українська">UA</button>
+        </div>
       </div>
     </header>
 
@@ -94,7 +99,7 @@
           <div class="sidebar-header">
             <div>
               <div class="sidebar-title-row">
-                <span class="island-title">My Parcels</span>
+                <span class="island-title" data-i18n="myParcels">My Parcels</span>
                 <span class="season-pill">2027–2030</span>
               </div>
               <p id="sidebarTotalHa" class="sidebar-sub">Loading parcels...</p>
@@ -107,19 +112,19 @@
           <div class="sidebar-search-wrap">
             <div class="search-input-box">
               <svg class="search-icon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-              <input type="text" id="locationSearchInput" class="search-input" placeholder="Search city, parcel, Черкаси..." autocomplete="off" spellcheck="false">
+              <input type="text" id="locationSearchInput" class="search-input" placeholder="Search city, parcel, Черкаси..." data-i18n-ph="searchPlaceholder" autocomplete="off" spellcheck="false">
               <button type="button" id="locationSearchClear" class="search-clear-btn is-hidden" aria-label="Clear search">&times;</button>
             </div>
             <div id="searchSuggestions" class="search-suggestions is-hidden" role="listbox"></div>
           </div>
 
           <div class="sidebar-list-bar">
-            <span class="list-section-label">Active &amp; Global</span>
+            <span class="list-section-label" data-i18n="activeGlobal">Active &amp; Global</span>
             <select id="fieldSortSelect" class="micro-select" aria-label="Sort fields">
-              <option value="default">Default</option>
-              <option value="risk">Drought Risk</option>
-              <option value="area">Area (ha)</option>
-              <option value="name">Name (A–Z)</option>
+              <option value="default" data-i18n="sortDefault">Default</option>
+              <option value="risk" data-i18n="sortRisk">Drought Risk</option>
+              <option value="area" data-i18n="sortArea">Area (ha)</option>
+              <option value="name" data-i18n="sortName">Name (A–Z)</option>
             </select>
           </div>
 
@@ -134,53 +139,53 @@
           <div class="hud-metrics-row">
             <span class="hud-stat"><strong id="hudTempVal">--°C</strong></span>
             <span class="hud-sep">&middot;</span>
-            <span class="hud-stat">7d rain <strong id="hudPrecipVal">-- mm</strong></span>
+            <span class="hud-stat"><span data-i18n="hud7dRain">7d rain</span> <strong id="hudPrecipVal">-- mm</strong></span>
             <span class="hud-sep">&middot;</span>
-            <span class="hud-stat">Wind <strong id="hudWindVal">-- m/s</strong></span>
+            <span class="hud-stat"><span data-i18n="hudWind">Wind</span> <strong id="hudWindVal">-- m/s</strong></span>
           </div>
           <div class="hud-soil-row">
-            <span>Root Moisture <strong id="hudMoistureVal">--%</strong></span>
+            <span><span data-i18n="hudRootMoist">Root Moisture</span> <strong id="hudMoistureVal">--%</strong></span>
             <span id="hudSoilSummary" class="hud-soil-sub">AWC -- mm</span>
           </div>
         </div>
 
         <div class="floating-map-dock" role="toolbar" aria-label="Map layer controls">
           <div class="dock-seg" role="group" aria-label="Base map layer">
-            <button type="button" id="layerSatBtn" class="dock-seg-btn is-active">Satellite</button>
-            <button type="button" id="layerTerBtn" class="dock-seg-btn">Terrain</button>
+            <button type="button" id="layerSatBtn" class="dock-seg-btn is-active" data-i18n="layerSat">Satellite</button>
+            <button type="button" id="layerTerBtn" class="dock-seg-btn" data-i18n="layerTer">Terrain</button>
           </div>
           <div class="dock-sep"></div>
-          <button type="button" id="toggleLabelsBtn" class="dock-chip-btn is-active" title="Toggle town &amp; road labels">Labels</button>
-          <button type="button" id="toggleZonesBtn" class="dock-chip-btn is-active" title="Toggle NASA regional soil moisture &amp; drought markers">NASA Zones</button>
-          <button type="button" id="toggleAllFieldsBtn" class="dock-chip-btn" title="Zoom to view all global fields">All Parcels</button>
+          <button type="button" id="toggleLabelsBtn" class="dock-chip-btn is-active" data-i18n-title="toggleLabelsTitle" data-i18n="toggleLabels">Labels</button>
+          <button type="button" id="toggleZonesBtn" class="dock-chip-btn is-active" title="Toggle NASA regional soil moisture &amp; drought markers" data-i18n="toggleZones">NASA Zones</button>
+          <button type="button" id="toggleAllFieldsBtn" class="dock-chip-btn" title="Zoom to view all global fields" data-i18n="toggleAllFields">All Parcels</button>
         </div>
 
         <div id="mapZonesLegend" class="map-zones-legend">
-          <span class="legend-title">SMAP Risk</span>
-          <span class="legend-item"><i class="dot-high"></i>High</span>
-          <span class="legend-item"><i class="dot-mod"></i>Mod</span>
-          <span class="legend-item"><i class="dot-low"></i>Good</span>
+          <span class="legend-title" data-i18n="smapRiskTitle">SMAP Risk</span>
+          <span class="legend-item"><i class="dot-high"></i><span data-i18n="riskHigh">High</span></span>
+          <span class="legend-item"><i class="dot-mod"></i><span data-i18n="riskMod">Mod</span></span>
+          <span class="legend-item"><i class="dot-low"></i><span data-i18n="riskGood">Good</span></span>
         </div>
 
         <div id="drawHud" class="draw-hud is-hidden" role="region" aria-label="Field boundary drawing controls">
           <div class="draw-hud-info">
-            <span id="drawHudTitle" class="draw-hud-title">Click vertices to map field boundary</span>
+            <span id="drawHudTitle" class="draw-hud-title" data-i18n="drawPrompt">Click vertices to map field boundary</span>
             <span class="draw-stats"><span id="drawVertexCount">0</span> pts &middot; <strong id="drawAreaReadout">0.0 ha</strong></span>
           </div>
           <div class="draw-hud-btns">
-            <button type="button" id="drawUndoBtn" class="btn-outline-sm">Undo</button>
-            <button type="button" id="drawFinishBtn" class="btn-primary-sm" disabled>Save Field</button>
-            <button type="button" id="drawCancelBtn" class="btn-ghost-sm">Cancel</button>
+            <button type="button" id="drawUndoBtn" class="btn-outline-sm" data-i18n="undo">Undo</button>
+            <button type="button" id="drawFinishBtn" class="btn-primary-sm" disabled data-i18n="saveField">Save Field</button>
+            <button type="button" id="drawCancelBtn" class="btn-ghost-sm" data-i18n="cancel">Cancel</button>
           </div>
         </div>
 
-        <div id="mapIdleHint" class="map-idle-hint">
+        <div id="mapIdleHint" class="map-idle-hint" data-i18n="mapIdleHint">
           Click empty map to probe coordinates · Use Draw Field to add parcels
         </div>
 
         <button type="button" id="inspectorExpandTab" class="edge-expand-tab edge-expand-right is-hidden" title="Show Field Inspector">
           <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
-          <span>Inspector</span>
+          <span data-i18n="btnInspector">Inspector</span>
         </button>
       </main>
 
@@ -203,7 +208,7 @@
             <div class="inspector-header-actions">
               <button type="button" id="redrawPolygonBtn" class="btn-outline-xs" title="Edit or redraw this parcel's boundary on map" aria-label="Redraw boundary">
                 <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.375 2.625a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4Z"/></svg>
-                <span>Redraw</span>
+                <span data-i18n="redrawBoundary">Redraw</span>
               </button>
               <button type="button" id="syncTelemetryBtn" class="icon-btn" title="Refresh live NASA POWER, Open-Meteo &amp; SoilGrids" aria-label="Refresh satellite sync">
                 <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 16h5v5"/></svg>
@@ -219,27 +224,27 @@
         </div>
 
         <div class="inspector-tabs" role="tablist">
-          <button type="button" id="tabClimateBtn" class="tab-btn is-active" data-tab="climate" role="tab" aria-selected="true">Climate &amp; Soil</button>
-          <button type="button" id="tabRotationBtn" class="tab-btn" data-tab="rotation" role="tab" aria-selected="false">4-Year Rotation</button>
-          <button type="button" id="tabImpactBtn" class="tab-btn" data-tab="impact" role="tab" aria-selected="false">Water &amp; Profit</button>
-          <button type="button" id="tabReportBtn" class="tab-btn" data-tab="report" role="tab" aria-selected="false">Field Report</button>
+          <button type="button" id="tabClimateBtn" class="tab-btn is-active" data-tab="climate" role="tab" aria-selected="true" data-i18n="inspectorTabClimate">Climate &amp; Soil</button>
+          <button type="button" id="tabRotationBtn" class="tab-btn" data-tab="rotation" role="tab" aria-selected="false" data-i18n="inspectorTabRotation">4-Year Rotation</button>
+          <button type="button" id="tabImpactBtn" class="tab-btn" data-tab="impact" role="tab" aria-selected="false" data-i18n="inspectorTabImpact">Water &amp; Profit</button>
+          <button type="button" id="tabReportBtn" class="tab-btn" data-tab="report" role="tab" aria-selected="false" data-i18n="inspectorTabReport">Field Report</button>
         </div>
 
         <div class="inspector-body">
           <section id="panelClimate" class="tab-panel is-active" role="tabpanel">
             <div class="kpi-strip-3">
               <div class="kpi-cell">
-                <span class="kpi-label">Root Moisture</span>
+                <span class="kpi-label" data-i18n="rootMoistureLabel">Root Moisture</span>
                 <strong id="kpiMoistureVal" class="kpi-val">--%</strong>
                 <span id="kpiMoistureSub" class="kpi-sub">-- mm available</span>
               </div>
               <div class="kpi-cell">
-                <span class="kpi-label">Water Balance</span>
+                <span class="kpi-label" data-i18n="waterBalanceLabel">Water Balance</span>
                 <strong id="kpiBalanceVal" class="kpi-val">-- mm</strong>
-                <span id="kpiBalanceSub" class="kpi-sub">Rain vs ET demand</span>
+                <span id="kpiBalanceSub" class="kpi-sub" data-i18n="rainVsEtDemand">Rain vs ET demand</span>
               </div>
               <div class="kpi-cell">
-                <span class="kpi-label">Heat Anomaly</span>
+                <span class="kpi-label" data-i18n="heatAnomalyLabel">Heat Anomaly</span>
                 <strong id="kpiAnomalyVal" class="kpi-val">--°C</strong>
                 <span id="kpiAnomalySub" class="kpi-sub">-- days &ge; 30°C</span>
               </div>
@@ -248,8 +253,8 @@
             <div class="panel-card">
               <div class="card-head-row">
                 <div>
-                  <h3 class="card-title">Live 7-Day Weather &amp; Soil Profile</h3>
-                  <p class="card-sub">Open-Meteo ECMWF forecast at parcel coordinates</p>
+                  <h3 class="card-title" data-i18n="liveWeatherHeading">Live 7-Day Weather &amp; Soil Profile</h3>
+                  <p class="card-sub" data-i18n="liveWeatherSub">Open-Meteo ECMWF forecast at parcel coordinates</p>
                 </div>
                 <span id="liveWeatherBadge" class="badge-subtle">Loading...</span>
               </div>
@@ -260,12 +265,12 @@
             <div class="panel-card">
               <div class="card-head-row">
                 <div>
-                  <h3 class="card-title">Monthly Rain vs. Evapotranspiration</h3>
-                  <p class="card-sub">NASA POWER climatology (precip vs crop ET demand)</p>
+                  <h3 class="card-title" data-i18n="climateChartHeading">Monthly Rain vs. Evapotranspiration</h3>
+                  <p class="card-sub" data-i18n="climateChartSub">NASA POWER climatology (precip vs crop ET demand)</p>
                 </div>
                 <span class="chart-legend-inline">
-                  <span class="lg-item"><i class="lg-bar"></i>Rain (mm)</span>
-                  <span class="lg-item"><i class="lg-line"></i>ET (mm)</span>
+                  <span class="lg-item"><i class="lg-bar"></i><span data-i18n="chartRainMm">Rain (mm)</span></span>
+                  <span class="lg-item"><i class="lg-line"></i><span data-i18n="chartEtMm">ET (mm)</span></span>
                 </span>
               </div>
               <div class="chart-box" style="height:192px;">
@@ -277,44 +282,44 @@
             <div class="panel-card">
               <div class="card-head-row">
                 <div>
-                  <h3 class="card-title">Soil Chemistry &amp; Field Conditions</h3>
-                  <p class="card-sub">ISRIC SoilGrids v2.0 (0–5 cm) with farmer override inputs</p>
+                  <h3 class="card-title" data-i18n="soilChemHeading">Soil Chemistry &amp; Field Conditions</h3>
+                  <p class="card-sub" data-i18n="soilChemSub">ISRIC SoilGrids v2.0 (0–5 cm) with farmer override inputs</p>
                 </div>
                 <div class="row-gap-sm">
                   <span id="soilSourceTag" class="badge-subtle">Reference</span>
-                  <button type="button" id="resetOverridesBtn" class="btn-link-sm">Reset</button>
+                  <button type="button" id="resetOverridesBtn" class="btn-link-sm" data-i18n="btnReset">Reset</button>
                 </div>
               </div>
 
               <div class="soilgrids-strip">
-                <div class="sg-pill"><span>Clay</span><strong id="clayStatVal">--%</strong></div>
-                <div class="sg-pill"><span>Sand</span><strong id="sandStatVal">--%</strong></div>
-                <div class="sg-pill"><span>Soil pH</span><strong id="phStatVal">--</strong></div>
-                <div class="sg-pill"><span>SOM Est.</span><strong id="somStatVal">--%</strong></div>
+                <div class="sg-pill"><span data-i18n="statClay">Clay</span><strong id="clayStatVal">--%</strong></div>
+                <div class="sg-pill"><span data-i18n="statSand">Sand</span><strong id="sandStatVal">--%</strong></div>
+                <div class="sg-pill"><span data-i18n="statPh">Soil pH</span><strong id="phStatVal">--</strong></div>
+                <div class="sg-pill"><span data-i18n="statSom">SOM Est.</span><strong id="somStatVal">--%</strong></div>
               </div>
 
               <div class="form-grid-2">
                 <label class="field-input-group">
-                  <span>Soil Classification</span>
+                  <span data-i18n="labelSoilClass">Soil Classification</span>
                   <select id="soilTypeSelect" class="input-ctrl"></select>
                 </label>
                 <label class="field-input-group">
-                  <span>Previous Harvested Crop (2026)</span>
+                  <span data-i18n="labelPrevCrop">Previous Harvested Crop (2026)</span>
                   <select id="prevCropSelect" class="input-ctrl"></select>
                 </label>
                 <label class="field-input-group">
-                  <span>Field Area (hectares)</span>
+                  <span data-i18n="labelFieldArea">Field Area (hectares)</span>
                   <input type="number" id="fieldAreaInput" class="input-ctrl" min="0.5" max="20000" step="0.1">
                 </label>
                 <label class="field-input-group">
-                  <span>Topsoil pH</span>
+                  <span data-i18n="labelTopsoilPh">Topsoil pH</span>
                   <input type="number" id="soilPhInput" class="input-ctrl" min="4.2" max="8.8" step="0.1">
                 </label>
               </div>
 
               <label class="slider-group">
                 <div class="slider-head">
-                  <span>Soil Organic Matter (SOM %)</span>
+                  <span data-i18n="labelSomSlider">Soil Organic Matter (SOM %)</span>
                   <strong id="somReadout" class="mono-val">3.8%</strong>
                 </div>
                 <input type="range" id="somSlider" min="1.0" max="6.5" step="0.1">
@@ -322,7 +327,7 @@
             </div>
 
             <div class="diagnosis-callout">
-              <span class="diagnosis-tag">NASA Agronomy Brief</span>
+              <span class="diagnosis-tag" data-i18n="nasaBriefTag">NASA Agronomy Brief</span>
               <p id="fieldDiagnosisText" class="diagnosis-text">Select a parcel to inspect seasonal hydrological stress.</p>
             </div>
           </section>
@@ -331,8 +336,8 @@
             <div class="panel-card">
               <div class="card-head-row">
                 <div>
-                  <h3 class="card-title">Farmer Strategy &amp; Priorities</h3>
-                  <p class="card-sub">Select optimization mode or adjust custom weights</p>
+                  <h3 class="card-title" data-i18n="strategyHeading">Farmer Strategy &amp; Priorities</h3>
+                  <p class="card-sub" data-i18n="strategySub">Select optimization mode or adjust custom weights</p>
                 </div>
                 <span id="rotationScoreBadge" class="verdict-pill">Score --/100</span>
               </div>
@@ -341,15 +346,15 @@
 
               <div class="weights-grid">
                 <label class="weight-ctrl">
-                  <span>Water <strong id="weightWaterVal">45%</strong></span>
+                  <span><span data-i18n="weightWater">Water</span> <strong id="weightWaterVal">45%</strong></span>
                   <input type="range" id="weightWaterSlider" min="0" max="100" step="5" value="45">
                 </label>
                 <label class="weight-ctrl">
-                  <span>Soil <strong id="weightSoilVal">30%</strong></span>
+                  <span><span data-i18n="weightSoil">Soil</span> <strong id="weightSoilVal">30%</strong></span>
                   <input type="range" id="weightSoilSlider" min="0" max="100" step="5" value="30">
                 </label>
                 <label class="weight-ctrl">
-                  <span>Profit <strong id="weightProfitVal">25%</strong></span>
+                  <span><span data-i18n="weightProfit">Profit</span> <strong id="weightProfitVal">25%</strong></span>
                   <input type="range" id="weightProfitSlider" min="0" max="100" step="5" value="25">
                 </label>
               </div>
@@ -357,18 +362,18 @@
               <div class="practice-bar">
                 <label class="check-label">
                   <input type="checkbox" id="coverCropToggle" checked>
-                  <span>Winter Cover</span>
+                  <span data-i18n="winterCoverLabel">Winter Cover</span>
                 </label>
                 <select id="coverCropSelect" class="micro-select-wide" aria-label="Cover crop mix"></select>
                 <label class="check-label">
                   <input type="checkbox" id="noTillToggle" checked>
-                  <span>No-Till</span>
+                  <span data-i18n="noTillLabel">No-Till</span>
                 </label>
               </div>
 
               <div class="strategy-actions-row">
-                <button type="button" id="autoOptimizeBtn" class="btn-primary-sm">Auto-Optimize Best 4-Yr Sequence</button>
-                <button type="button" id="saveFieldPlanBtn" class="btn-outline-sm">Save to Field</button>
+                <button type="button" id="autoOptimizeBtn" class="btn-primary-sm" data-i18n="btnAutoOptimize">Auto-Optimize Best 4-Yr Sequence</button>
+                <button type="button" id="saveFieldPlanBtn" class="btn-outline-sm" data-i18n="btnSaveToField">Save to Field</button>
               </div>
               <p id="rotationDeltaNote" class="delta-note"></p>
             </div>
@@ -376,15 +381,15 @@
             <div class="panel-card gantt-card">
               <div class="card-head-row">
                 <div>
-                  <h3 class="card-title">48-Month Sowing &amp; Harvest Timeline</h3>
-                  <p class="card-sub">2027–2030 crop sequence, winter bridges &amp; return intervals</p>
+                  <h3 class="card-title" data-i18n="timelineHeading">48-Month Sowing &amp; Harvest Timeline</h3>
+                  <p class="card-sub" data-i18n="timelineSub">2027–2030 crop sequence, winter bridges &amp; return intervals</p>
                 </div>
               </div>
 
               <div id="rotationGantt" class="gantt-wrapper">
                 <div class="gantt-header-row">
-                  <div class="gantt-col-crop">Season &amp; Crop</div>
-                  <div class="gantt-months-head">
+                  <div class="gantt-col-crop" data-i18n="colSeasonCrop">Season &amp; Crop</div>
+                  <div id="ganttMonthsHead" class="gantt-months-head">
                     <span>J</span><span>F</span><span>M</span><span>A</span><span>M</span><span>J</span><span>J</span><span>A</span><span>S</span><span>O</span><span>N</span><span>D</span>
                   </div>
                 </div>
@@ -428,7 +433,7 @@
             </div>
 
             <div class="panel-card">
-              <h3 class="card-title">Rotation Diagnostics &amp; Disease Guard</h3>
+              <h3 class="card-title" data-i18n="rotationAlertsHeading">Rotation Diagnostics &amp; Disease Guard</h3>
               <div id="agronomyAlerts" class="alerts-list"></div>
             </div>
           </section>
@@ -436,36 +441,36 @@
           <section id="panelImpact" class="tab-panel" role="tabpanel">
             <div class="kpi-strip-4">
               <div class="kpi-cell">
-                <span class="kpi-label">Water Conserved</span>
+                <span class="kpi-label" data-i18n="impactWaterConserved">Water Conserved</span>
                 <strong id="impactWaterDelta" class="kpi-val kpi-green">-- mm</strong>
                 <span id="impactWaterSub" class="kpi-sub">Root reserve delta</span>
               </div>
               <div class="kpi-cell">
-                <span class="kpi-label">4-Yr Net Margin</span>
+                <span class="kpi-label" data-i18n="impactNetMargin">4-Yr Net Margin</span>
                 <strong id="impactProfitDelta" class="kpi-val kpi-green">--</strong>
                 <span id="impactProfitSub" class="kpi-sub">Full parcel gain</span>
               </div>
               <div class="kpi-cell">
-                <span class="kpi-label">Organic Carbon</span>
+                <span class="kpi-label" data-i18n="impactOrganicCarbon">Organic Carbon</span>
                 <strong id="impactSomDelta" class="kpi-val">--%</strong>
                 <span id="impactSomSub" class="kpi-sub">4-yr SOM change</span>
               </div>
               <div class="kpi-cell">
-                <span class="kpi-label">Resilience Gain</span>
+                <span class="kpi-label" data-i18n="impactResilienceGain">Resilience Gain</span>
                 <strong id="impactScoreDelta" class="kpi-val">-- pts</strong>
-                <span id="impactScoreSub" class="kpi-sub">vs traditional</span>
+                <span id="impactScoreSub" class="kpi-sub" data-i18n="impactVsTraditional">vs traditional</span>
               </div>
             </div>
 
             <div class="panel-card">
               <div class="card-head-row">
                 <div>
-                  <h3 class="card-title">4-Year Root-Zone Soil Moisture Reserve (mm)</h3>
-                  <p class="card-sub">Field Shift trajectory vs regional baseline practice</p>
+                  <h3 class="card-title" data-i18n="rootReserveHeading">4-Year Root-Zone Soil Moisture Reserve (mm)</h3>
+                  <p class="card-sub" data-i18n="rootReserveSub">Field Shift trajectory vs regional baseline practice</p>
                 </div>
                 <span class="chart-legend-inline">
-                  <span class="lg-item"><i class="lg-dot-green"></i>Field Shift</span>
-                  <span class="lg-item"><i class="lg-dot-gray"></i>Traditional</span>
+                  <span class="lg-item"><i class="lg-dot-green"></i><span data-i18n="legendFieldShift">Field Shift</span></span>
+                  <span class="lg-item"><i class="lg-dot-gray"></i><span data-i18n="legendTraditional">Traditional</span></span>
                 </span>
               </div>
               <div class="chart-box" style="height:185px;">
@@ -477,12 +482,12 @@
             <div class="panel-card">
               <div class="card-head-row">
                 <div>
-                  <h3 class="card-title">Cumulative Net Margin ($ / hectare)</h3>
-                  <p class="card-sub">Revenue minus input &amp; drought yield penalty</p>
+                  <h3 class="card-title" data-i18n="netMarginHeading">Cumulative Net Margin ($ / hectare)</h3>
+                  <p class="card-sub" data-i18n="netMarginSub">Revenue minus input &amp; drought yield penalty</p>
                 </div>
                 <span class="chart-legend-inline">
-                  <span class="lg-item"><i class="lg-dot-green"></i>Field Shift</span>
-                  <span class="lg-item"><i class="lg-dot-gray"></i>Traditional</span>
+                  <span class="lg-item"><i class="lg-dot-green"></i><span data-i18n="legendFieldShift">Field Shift</span></span>
+                  <span class="lg-item"><i class="lg-dot-gray"></i><span data-i18n="legendTraditional">Traditional</span></span>
                 </span>
               </div>
               <div class="chart-box" style="height:185px;">
@@ -492,16 +497,16 @@
             </div>
 
             <div class="panel-card">
-              <h3 class="card-title">Annual Agronomic Comparison (2027–2030)</h3>
+              <h3 class="card-title" data-i18n="agronomicCompHeading">Annual Agronomic Comparison (2027–2030)</h3>
               <div class="table-scroll">
                 <table class="data-table">
                   <thead>
                     <tr>
-                      <th>Year</th>
-                      <th>Recommended</th>
-                      <th>Traditional</th>
-                      <th>Water End</th>
-                      <th>Margin / ha</th>
+                      <th data-i18n="thYear">Year</th>
+                      <th data-i18n="thRecommended">Recommended</th>
+                      <th data-i18n="thTraditional">Traditional</th>
+                      <th data-i18n="thWaterEnd">Water End</th>
+                      <th data-i18n="thMarginHa">Margin / ha</th>
                     </tr>
                   </thead>
                   <tbody id="comparisonTableBody"></tbody>
@@ -512,30 +517,30 @@
 
           <section id="panelReport" class="tab-panel" role="tabpanel">
             <div class="verdict-banner">
-              <span class="verdict-eyebrow">Verified Agronomic Action Plan</span>
-              <h3 id="reportVerdictTitle" class="verdict-title">4-Year Drought-Resilient Rotation</h3>
+              <span class="verdict-eyebrow" data-i18n="reportPlanEyebrow">Verified Agronomic Action Plan</span>
+              <h3 id="reportVerdictTitle" class="verdict-title" data-i18n="reportPlanTitle">4-Year Drought-Resilient Rotation</h3>
               <p id="reportVerdictDesc" class="verdict-desc"></p>
               <p id="reportFieldMeta" class="verdict-meta"></p>
             </div>
 
             <div class="panel-card">
               <div class="card-head-row">
-                <h3 class="card-title">Prescribed Schedule</h3>
+                <h3 class="card-title" data-i18n="prescribedScheduleHeading">Prescribed Schedule</h3>
                 <div class="row-gap-sm">
                   <button type="button" id="reportExportCsvBtn" class="btn-outline-sm">CSV</button>
                   <button type="button" id="reportExportJsonBtn" class="btn-outline-sm">JSON</button>
-                  <button type="button" id="reportPrintBtn" class="btn-primary-sm">Print A4 Plan</button>
+                  <button type="button" id="reportPrintBtn" class="btn-primary-sm" data-i18n="btnPrintA4">Print A4 Plan</button>
                 </div>
               </div>
               <div class="table-scroll">
                 <table class="data-table">
                   <thead>
                     <tr>
-                      <th>Year</th>
-                      <th>Crop &amp; Window</th>
-                      <th>Cover / Residue</th>
-                      <th>Net $/ha</th>
-                      <th>Reserve</th>
+                      <th data-i18n="thYear">Year</th>
+                      <th data-i18n="thCropWindow">Crop &amp; Window</th>
+                      <th data-i18n="thCoverResidue">Cover / Residue</th>
+                      <th data-i18n="thNetMargin">Net $/ha</th>
+                      <th data-i18n="thReserve">Reserve</th>
                     </tr>
                   </thead>
                   <tbody id="reportScheduleBody"></tbody>
@@ -544,7 +549,7 @@
             </div>
 
             <div class="panel-card">
-              <h3 class="card-title">Season Execution Checklist</h3>
+              <h3 class="card-title" data-i18n="checklistHeading">Season Execution Checklist</h3>
               <ul id="reportChecklist" class="checklist-ul"></ul>
             </div>
           </section>
@@ -556,10 +561,10 @@
       <div class="workspace-page-inner">
         <div class="page-hero-head">
           <div>
-            <h1 class="page-title">Farm Portfolio Comparison</h1>
-            <p class="page-sub">All active &amp; benchmark parcels aggregated over the 2027–2030 cycle</p>
+            <h1 class="page-title" data-i18n="portfolioHeading">Farm Portfolio Comparison</h1>
+            <p class="page-sub" data-i18n="portfolioSub">All active &amp; benchmark parcels aggregated over the 2027–2030 cycle</p>
           </div>
-          <button type="button" id="backToMapPortfolioBtn" class="btn-outline-sm">Back to Map Workspace</button>
+          <button type="button" id="backToMapPortfolioBtn" class="btn-outline-sm" data-i18n="backToMap">Back to Map Workspace</button>
         </div>
         <div id="portfolioSummaryStrip" class="portfolio-kpis"></div>
         <div class="page-surface-card">
@@ -567,13 +572,13 @@
             <table class="data-table">
               <thead>
                 <tr>
-                  <th>Field</th>
-                  <th>Region</th>
-                  <th>Area (ha)</th>
-                  <th>Soil Moisture</th>
-                  <th>4-Yr Rotation</th>
-                  <th>Water Gain</th>
-                  <th>Portfolio Profit &Delta;</th>
+                  <th data-i18n="thField">Field</th>
+                  <th data-i18n="thRegion">Region</th>
+                  <th data-i18n="thArea">Area (ha)</th>
+                  <th data-i18n="thSoilMoisture">Soil Moisture</th>
+                  <th data-i18n="th4YrRotation">4-Yr Rotation</th>
+                  <th data-i18n="thWaterGain">Water Gain</th>
+                  <th data-i18n="thPortfolioProfit">Portfolio Profit &Delta;</th>
                 </tr>
               </thead>
               <tbody id="portfolioTableBody"></tbody>
@@ -587,33 +592,33 @@
       <div class="workspace-page-inner">
         <div class="page-hero-head">
           <div>
-            <h1 class="page-title">12-Crop Agronomic Reference Matrix</h1>
-            <p class="page-sub">Water demand, rooting depth, nitrogen fixation, biological heat limit &amp; sowing calendar</p>
+            <h1 class="page-title" data-i18n="cropsHeading">12-Crop Agronomic Reference Matrix</h1>
+            <p class="page-sub" data-i18n="cropsSub">Water demand, rooting depth, nitrogen fixation, biological heat limit &amp; sowing calendar</p>
           </div>
-          <button type="button" id="backToMapCropsBtn" class="btn-outline-sm">Back to Map Workspace</button>
+          <button type="button" id="backToMapCropsBtn" class="btn-outline-sm" data-i18n="backToMap">Back to Map Workspace</button>
         </div>
         <div class="page-surface-card">
           <div class="page-filter-row">
-            <input type="text" id="cropSearchInput" class="input-ctrl" placeholder="Filter crops by name or family...">
+            <input type="text" id="cropSearchInput" class="input-ctrl" placeholder="Filter crops by name or family..." data-i18n-ph="cropSearchPlaceholder">
             <select id="cropSeasonFilter" class="input-ctrl" style="max-width:220px;">
-              <option value="all">All Drought Ratings</option>
-              <option value="high">High Drought Tolerance (&ge;70)</option>
-              <option value="winter">Overwintering Crops</option>
-              <option value="legume">Nitrogen Fixers (+N)</option>
+              <option value="all" data-i18n="optAllDrought">All Drought Ratings</option>
+              <option value="high" data-i18n="optHighDrought">High Drought Tolerance (&ge;70)</option>
+              <option value="winter" data-i18n="optWinterCrops">Overwintering Crops</option>
+              <option value="legume" data-i18n="optLegumeCrops">Nitrogen Fixers (+N)</option>
             </select>
           </div>
           <div class="table-scroll">
             <table class="data-table">
               <thead>
                 <tr>
-                  <th>Crop</th>
-                  <th>Window</th>
-                  <th>Water (mm)</th>
-                  <th>Root (cm)</th>
-                  <th>N Bal (kg/ha)</th>
-                  <th>Heat Limit</th>
-                  <th>Drought Score</th>
-                  <th>Est. Margin/ha</th>
+                  <th data-i18n="thCrop">Crop</th>
+                  <th data-i18n="thWindow">Window</th>
+                  <th data-i18n="thWaterMm">Water (mm)</th>
+                  <th data-i18n="thRootCm">Root (cm)</th>
+                  <th data-i18n="thNBal">N Bal (kg/ha)</th>
+                  <th data-i18n="thHeatLimit">Heat Limit</th>
+                  <th data-i18n="thDroughtScore">Drought Score</th>
+                  <th data-i18n="thEstMargin">Est. Margin/ha</th>
                 </tr>
               </thead>
               <tbody id="cropMatrixTableBody"></tbody>
@@ -627,19 +632,19 @@
       <div class="workspace-page-inner">
         <div class="page-hero-head">
           <div>
-            <h1 class="page-title">NASA Earth Telemetry &amp; Scoring Methodology</h1>
-            <p class="page-sub">Live open science pipelines driving parcel soil-water &amp; rotation analytics</p>
+            <h1 class="page-title" data-i18n="scienceHeading">NASA Earth Telemetry &amp; Scoring Methodology</h1>
+            <p class="page-sub" data-i18n="scienceSub">Live open science pipelines driving parcel soil-water &amp; rotation analytics</p>
           </div>
-          <button type="button" id="backToMapScienceBtn" class="btn-outline-sm">Back to Map Workspace</button>
+          <button type="button" id="backToMapScienceBtn" class="btn-outline-sm" data-i18n="backToMap">Back to Map Workspace</button>
         </div>
         <div id="scienceSourcesGrid" class="science-grid"></div>
         <div class="formula-card page-formula-card">
-          <h4>Multi-Year Agronomic Scoring Engine</h4>
-          <p>For each year <em>t</em> &isin; {1, 2, 3, 4}, Field Shift models available root-zone moisture balance:</p>
+          <h4 data-i18n="scienceEngineTitle">Multi-Year Agronomic Scoring Engine</h4>
+          <p data-i18n="scienceEngineIntro">For each year <em>t</em> &isin; {1, 2, 3, 4}, Field Shift models available root-zone moisture balance:</p>
           <p class="formula-line">
             W<sub>t</sub> = min(AWC, W<sub>t&minus;1</sub> + P<sub>eff</sub> &minus; ET<sub>crop</sub>(t) + &Delta;W<sub>cover</sub> + &Delta;W<sub>tillage</sub>)
           </p>
-          <p>Simultaneously tracking nitrogen carryover N<sub>t</sub> (kg/ha), host-pathogen return intervals (blocking consecutive Sclerotinia hosts like <code>Sunflower &rarr; Soybean &rarr; Rapeseed</code>), and flowering heat-stress penalties whenever NASA <code>T2M_MAX</code> exceeds each crop's biological ceiling.</p>
+          <p data-i18n="scienceEngineDetails">Simultaneously tracking nitrogen carryover N<sub>t</sub> (kg/ha), host-pathogen return intervals (blocking consecutive Sclerotinia hosts like <code>Sunflower &rarr; Soybean &rarr; Rapeseed</code>), and flowering heat-stress penalties whenever NASA <code>T2M_MAX</code> exceeds each crop's biological ceiling.</p>
         </div>
       </div>
     </section>
@@ -649,23 +654,23 @@
     <div class="modal-card modal-sm">
       <div class="modal-head">
         <div>
-          <h2 id="nameModalTitle" class="modal-title">Save New Parcel</h2>
+          <h2 id="nameModalTitle" class="modal-title" data-i18n="saveNewParcelTitle">Save New Parcel</h2>
           <p id="newFieldAreaBadge" class="modal-sub">Geodesic area: 0.0 ha</p>
         </div>
       </div>
       <div class="modal-form-stack">
         <label class="field-input-group">
-          <span>Parcel Name</span>
-          <input type="text" id="newFieldNameInput" class="input-ctrl" placeholder="e.g., North Pivot #4">
+          <span data-i18n="labelParcelName">Parcel Name</span>
+          <input type="text" id="newFieldNameInput" class="input-ctrl" placeholder="e.g., North Pivot #4" data-i18n-ph="newFieldPlaceholder">
         </label>
         <label class="field-input-group">
-          <span>Previous Crop Harvested (2026)</span>
+          <span data-i18n="labelPrevCrop">Previous Crop Harvested (2026)</span>
           <select id="newFieldPrevCropSelect" class="input-ctrl"></select>
         </label>
       </div>
       <div class="modal-actions-end">
-        <button type="button" id="cancelNewFieldBtn" class="btn-outline-sm">Discard</button>
-        <button type="button" id="confirmNewFieldBtn" class="btn-primary-sm">Save &amp; Analyze Parcel</button>
+        <button type="button" id="cancelNewFieldBtn" class="btn-outline-sm" data-i18n="btnDiscard">Discard</button>
+        <button type="button" id="confirmNewFieldBtn" class="btn-primary-sm" data-i18n="btnSaveAndAnalyze">Save &amp; Analyze Parcel</button>
       </div>
     </div>
   </div>

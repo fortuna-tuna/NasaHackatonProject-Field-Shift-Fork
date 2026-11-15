@@ -179,10 +179,8 @@ button:disabled {
   padding: 3px 6px 3px 2px;
   border-radius: 8px;
   text-align: left;
-}
-
-.brand-lockup:hover {
-  background: var(--bg-subtle);
+  cursor: default;
+  user-select: none;
 }
 
 .brand-emblem {
@@ -221,6 +219,44 @@ button:disabled {
   height: 20px;
   background: var(--border-hairline);
   margin: 0 2px;
+}
+
+.lang-switcher {
+  display: inline-flex;
+  align-items: center;
+  background: var(--bg-subtle);
+  border: 1px solid var(--border-hairline);
+  border-radius: 6px;
+  padding: 2px;
+  gap: 1px;
+}
+
+.lang-btn {
+  height: 24px;
+  padding: 0 7px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  color: var(--ink-muted);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border: none;
+  background: transparent;
+  transition: background-color 140ms var(--ease-ui), color 140ms var(--ease-ui);
+}
+
+.lang-btn:hover:not(.is-active) {
+  color: var(--ink-primary);
+  background: rgba(255, 255, 255, 0.4);
+}
+
+.lang-btn.is-active {
+  background: var(--anchor-dark);
+  color: #4ADE80;
+  box-shadow: var(--shadow-sm);
 }
 
 .top-nav-pills {
