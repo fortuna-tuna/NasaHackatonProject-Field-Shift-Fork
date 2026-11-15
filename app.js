@@ -52,6 +52,14 @@
     useNoTill: true,
     planSequence: ["winter_wheat", "chickpea", "sorghum", "winter_barley"],
     overrides: null,
+    printMode: "field",
+    theme: (() => {
+      try {
+        return localStorage.getItem("field_shift_theme") === "dark" ? "dark" : "light";
+      } catch (_e) {
+        return "light";
+      }
+    })(),
     telemetryLoading: false,
     activeRequestSeq: 0,
     liveForecast: null,
@@ -187,6 +195,50 @@
     return m.shortDesc;
   }
 
+  function formatUsd(val, suffix = "") {
+    const num = Math.round(Number(val) || 0);
+    return `${num < 0 ? "-" : ""}$${Math.abs(num).toLocaleString()}${suffix}`;
+  }
+
+  function formatSignedUsd(val, suffix = "") {
+    const num = Math.round(Number(val) || 0);
+    return `${num < 0 ? "-" : "+"}$${Math.abs(num).toLocaleString()}${suffix}`;
+  }
+
+  function updateThemeButtonUi() {
+    const btn = $("themeToggleBtn");
+    if (!btn) return;
+    const isDark = state.theme === "dark";
+    btn.setAttribute("aria-pressed", String(isDark));
+    btn.title = t(isDark ? "themeToLightTitle" : "themeToDarkTitle");
+  }
+
+  function applyTheme(themeName, announce = false, persist = true) {
+    state.theme = themeName === "dark" ? "dark" : "light";
+    if (state.theme === "dark") {
+      document.documentElement.dataset.theme = "dark";
+    } else {
+      delete document.documentElement.dataset.theme;
+    }
+    const metaTheme = document.querySelector('meta[name="theme-color"]');
+    if (metaTheme) {
+      metaTheme.content = state.theme === "dark" ? "#0B1220" : "#DCEFFB";
+    }
+    if (persist) {
+      try {
+        localStorage.setItem("field_shift_theme", state.theme);
+      } catch (_e) {}
+    }
+    updateThemeButtonUi();
+    if (typeof redrawVisibleCharts === "function") redrawVisibleCharts();
+    if (announce) {
+      const msg = state.lang === "ua"
+        ? (state.theme === "dark" ? "Увімкнено темну тему" : "Увімкнено світлу тему")
+        : (state.theme === "dark" ? "Switched to Dark Theme" : "Switched to Light Theme");
+      showToast(msg);
+    }
+  }
+
   function applyStaticTranslations() {
     const isUa = state.lang === "ua";
     document.querySelectorAll("[data-i18n]").forEach((el) => {
@@ -218,6 +270,8 @@
     if (btnEn) btnEn.classList.toggle("is-active", !isUa);
     if (btnUa) btnUa.classList.toggle("is-active", isUa);
     document.documentElement.lang = isUa ? "uk" : "en";
+    updateThemeButtonUi();
+    if (typeof syncCustomSelects === "function") syncCustomSelects();
   }
 
   function setLanguage(newLang) {
@@ -229,6 +283,7 @@
     applyStaticTranslations();
     populateStaticSelects();
     renderAll();
+    if (typeof refreshTourLanguage === "function") refreshTourLanguage();
     showToast(newLang === "ua" ? "Мову інтерфейсу переключено на українську" : "Interface language switched to English");
   }
 
@@ -312,7 +367,7 @@
 
   function buildFieldThumbSvg(polygon) {
     if (!Array.isArray(polygon) || polygon.length < 3) {
-      return "<svg viewBox=\"0 0 40 40\" width=\"34\" height=\"34\"><rect x=\"8\" y=\"8\" width=\"24\" height=\"24\" rx=\"3\" fill=\"rgba(34,197,94,0.25)\" stroke=\"#4ADE80\" stroke-width=\"2\"/></svg>";
+      return "<svg viewBox=\"0 0 40 40\" width=\"34\" height=\"34\"><rect x=\"8\" y=\"8\" width=\"24\" height=\"24\" rx=\"3\" fill=\"rgba(185,237,110,0.22)\" stroke=\"#B9ED6E\" stroke-width=\"2\"/></svg>";
     }
     let minLat = Infinity;
     let maxLat = -Infinity;
@@ -336,7 +391,7 @@
         return `${x.toFixed(1)},${y.toFixed(1)}`;
       })
       .join(" ");
-    return `<svg viewBox="0 0 40 40" width="36" height="36" aria-hidden="true"><polygon points="${pts}" fill="rgba(34,197,94,0.28)" stroke="#4ADE80" stroke-width="2" stroke-linejoin="round"/></svg>`;
+    return `<svg viewBox="0 0 40 40" width="36" height="36" aria-hidden="true"><polygon points="${pts}" fill="rgba(185,237,110,0.25)" stroke="#B9ED6E" stroke-width="2" stroke-linejoin="round"/></svg>`;
   }
 
   function loadStoredFields() {
@@ -935,20 +990,38 @@
     stripStatus.textContent = "NASA POWER \u00B7 SMAP L4 \u00B7 OPEN-METEO ECMWF \u00B7 SOILGRIDS v2.0";
   }
 
+  function normalizeLat(lat) {
+    const n = Number(lat);
+    if (!Number.isFinite(n)) return 0;
+    return clamp(n, -90, 90);
+  }
+
+  function normalizeLng(lng) {
+    const n = Number(lng);
+    if (!Number.isFinite(n)) return 0;
+    let w = ((((n + 180) % 360) + 360) % 360) - 180;
+    if (w === -180 && n > 0) w = 180;
+    return Object.is(w, -0) ? 0 : w;
+  }
+
   function updateMicroStripCoords(lat, lon) {
     if (!map) return;
-    const c = lat != null && lon != null ? { lat, lng: lon } : map.getCenter();
-    const latNs = c.lat >= 0 ? "N" : "S";
-    const lonEw = c.lng >= 0 ? "E" : "W";
-    $("hudCoordLat").textContent = `${Math.abs(c.lat).toFixed(4)}\u00B0 ${latNs}`;
-    $("hudCoordLon").textContent = `${Math.abs(c.lng).toFixed(4)}\u00B0 ${lonEw}`;
+    const raw = lat != null && lon != null ? { lat, lng: lon } : map.getCenter();
+    const safeLat = normalizeLat(raw.lat);
+    const safeLng = normalizeLng(raw.lng);
+    const latNs = safeLat >= 0 ? "N" : "S";
+    const lonEw = safeLng >= 0 ? "E" : "W";
+    $("hudCoordLat").textContent = `${Math.abs(safeLat).toFixed(4)}\u00B0 ${latNs}`;
+    $("hudCoordLon").textContent = `${Math.abs(safeLng).toFixed(4)}\u00B0 ${lonEw}`;
     $("hudMapZoom").textContent = map.getZoom().toFixed(1);
   }
 
   function initMap() {
     map = L.map("globalMap", {
       zoomControl: false,
-      attributionControl: false
+      attributionControl: false,
+      worldCopyJump: true,
+      minZoom: 2
     }).setView([49.38, 31.95], 13);
 
     L.control.zoom({ position: "bottomright" }).addTo(map);
@@ -975,6 +1048,10 @@
       updateMicroStripCoords(ev.latlng.lat, ev.latlng.lng);
     });
 
+    map.on("move zoom", () => {
+      updateMicroStripCoords();
+    });
+
     map.on("movestart zoomstart dragstart", () => {
       if (pendingMapClickTimer) {
         clearTimeout(pendingMapClickTimer);
@@ -984,13 +1061,19 @@
     });
 
     map.on("moveend zoomend", () => {
+      const center = map.getCenter();
+      if (Math.abs(center.lat) > 85.05) {
+        map.panTo([clamp(center.lat, -84.5, 84.5), normalizeLng(center.lng)], { animate: false });
+      }
       updateMicroStripCoords();
       if (state.showZones) renderZonesOverlay();
     });
 
     map.on("click", (ev) => {
+      const clickLat = normalizeLat(ev.latlng.lat);
+      const clickLon = normalizeLng(ev.latlng.lng);
       if (state.isDrawing) {
-        state.drawPoints.push([Number(ev.latlng.lat.toFixed(6)), Number(ev.latlng.lng.toFixed(6))]);
+        state.drawPoints.push([Number(clickLat.toFixed(6)), Number(clickLon.toFixed(6))]);
         renderDrawingOverlay();
         return;
       }
@@ -999,12 +1082,11 @@
         clearTimeout(pendingMapClickTimer);
         pendingMapClickTimer = null;
       }
-      const clickLat = ev.latlng.lat;
-      const clickLon = ev.latlng.lng;
+      const rawLon = ev.latlng.lng;
       pendingMapClickTimer = setTimeout(() => {
         pendingMapClickTimer = null;
         if (!state.isDrawing && !mapClickLocked) {
-          probeMapPoint(clickLat, clickLon);
+          probeMapPoint(clickLat, clickLon, rawLon);
         }
       }, 260);
     });
@@ -1030,10 +1112,11 @@
     renderZonesOverlay();
   }
 
-  async function probeMapPoint(lat, lon) {
+  async function probeMapPoint(lat, lon, anchorLon) {
     if (!map) return;
-    const cleanLat = Number(lat.toFixed(4));
-    const cleanLon = Number(lon.toFixed(4));
+    const cleanLat = Number(normalizeLat(lat).toFixed(4));
+    const cleanLon = Number(normalizeLng(lon).toFixed(4));
+    const popupLon = anchorLon != null && Number.isFinite(Number(anchorLon)) ? Number(anchorLon) : cleanLon;
     const seq = ++activeProbeSeq;
     const isUa = state.lang === "ua";
 
@@ -1041,7 +1124,7 @@
       probePopup = L.popup({ className: "probe-popup", maxWidth: 260 });
     }
     probePopup
-      .setLatLng([cleanLat, cleanLon])
+      .setLatLng([cleanLat, popupLon])
       .setContent(
         `<div class="probe-title">${isUa ? "Точковий аналіз телеметрії" : "Point Telemetry Probe"}</div>
          <div class="probe-coords">${cleanLat.toFixed(4)}°, ${cleanLon.toFixed(4)}°</div>
@@ -1107,13 +1190,13 @@
 
     if (pts.length >= 3) {
       L.polygon(pts, {
-        color: "#22C55E",
+        color: "#07917B",
         weight: 2.5,
         fillColor: "#22C55E",
         fillOpacity: 0.22
       }).addTo(drawLayerGroup);
     } else if (pts.length === 2) {
-      L.polyline(pts, { color: "#4ADE80", weight: 2.5, dashArray: "5, 5" }).addTo(drawLayerGroup);
+      L.polyline(pts, { color: "#B9ED6E", weight: 2.5, dashArray: "5, 5" }).addTo(drawLayerGroup);
     }
 
     for (let i = 0; i < pts.length; i += 1) {
@@ -1121,7 +1204,7 @@
         radius: 5.5,
         color: "#FFFFFF",
         weight: 2,
-        fillColor: i === 0 ? "#F59E0B" : "#15803D",
+        fillColor: i === 0 ? "#F59E0B" : "#07917B",
         fillOpacity: 1
       }).addTo(drawLayerGroup);
     }
@@ -1160,6 +1243,7 @@
       ? `Геодезична площа полігону: ${areaHa.toFixed(1)} га (${pts.length} точок)`
       : `Geodesic polygon area: ${areaHa.toFixed(1)} ha (${pts.length} vertices)`;
     $("nameFieldModal").classList.remove("is-hidden");
+    syncCustomSelects();
     $("newFieldNameInput").focus();
     $("newFieldNameInput").select();
   }
@@ -1201,11 +1285,11 @@
       if (!Array.isArray(f.polygon) || f.polygon.length < 3) continue;
       const isSelected = active && f.id === active.id;
       const poly = L.polygon(f.polygon, {
-        color: isSelected ? "#FACC15" : "#4ADE80",
-        weight: isSelected ? 2.8 : 1.6,
+        color: isSelected ? "#B9ED6E" : "#38BDF8",
+        weight: isSelected ? 2.8 : 1.7,
         dashArray: isSelected ? "6, 4" : null,
-        fillColor: isSelected ? "#22C55E" : "#94A3B8",
-        fillOpacity: isSelected ? 0.22 : 0.1
+        fillColor: isSelected ? "#07917B" : "#60A5FA",
+        fillOpacity: isSelected ? 0.24 : 0.1
       });
 
       poly.on("click", (ev) => {
@@ -1286,13 +1370,13 @@
     ];
 
     for (const z of zones) {
-      const color = z.risk === "high" ? "#EF4444" : z.risk === "mod" ? "#F59E0B" : "#22C55E";
+      const color = z.risk === "high" ? "#EF4444" : z.risk === "mod" ? "#F59E0B" : "#07917B";
       const marker = L.circleMarker([z.lat, z.lon], {
         radius: zoom <= 6 ? 7 : 5,
         color: "#FFFFFF",
         weight: 1.5,
         fillColor: color,
-        fillOpacity: 0.85
+        fillOpacity: 0.9
       });
 
       const sign = z.balanceMm >= 0 ? "+" : "";
@@ -1557,11 +1641,12 @@
     const haUnit = isUa ? "га" : "ha";
     const cmUnit = isUa ? "см" : "cm";
     const kgUnit = isUa ? "кг" : "kg";
-    $("rotationDeltaNote").textContent = `${vsTrad} (${tradSim.compositeScore}/100): ${waterDiff >= 0 ? "+" : ""}${waterDiff} ${waterUnit} ${rootMoistAvg} \u00B7 ${profitDiff >= 0 ? "+" : ""}$${profitDiff}/${haUnit} ${over4yr}`;
+    $("rotationDeltaNote").textContent = `${vsTrad} (${tradSim.compositeScore}/100): ${waterDiff >= 0 ? "+" : ""}${waterDiff} ${waterUnit} ${rootMoistAvg} \u00B7 ${formatSignedUsd(profitDiff, "/" + haUnit)} ${over4yr}`;
 
     const monthsArr = isUa
       ? ["Січ", "Лют", "Бер", "Кві", "Тра", "Чер", "Лип", "Сер", "Вер", "Жов", "Лис", "Гру"]
       : MONTHS;
+    const coverLeafSvg = "<svg viewBox=\"0 0 16 16\" width=\"11\" height=\"11\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M12.8 3.2C8.4 3.2 4.8 6 4.2 10.6c-.1.7.5 1.3 1.2 1.2 4.6-.6 7.4-4.2 7.4-8.6Z\"/><path d=\"M3.2 12.8 8.8 7.2\"/></svg>";
 
     for (let yr = 0; yr < 4; yr += 1) {
       const sel = $(`year${yr + 1}Select`);
@@ -1572,35 +1657,68 @@
       const cropShort = getCropShortName(cropId);
       const cropWin = getCropWindow(cropId);
 
-      $(`ganttMeta${yr + 1}`).textContent = `${crop.rootDepthCm}${cmUnit} \u00B7 ${crop.nitrogenBalanceKg >= 0 ? "+" : ""}${crop.nitrogenBalanceKg}${kgUnit} N \u00B7 $${simYr.marginUsdHa}/${haUnit}`;
+      const nVal = crop.nitrogenBalanceKg;
+      const nCls = nVal > 0 ? "is-pos" : (nVal < 0 ? "is-warn" : "");
+      const mVal = simYr.marginUsdHa;
+      const mCls = mVal >= 0 ? "is-pos" : "is-neg";
+      $(`ganttMeta${yr + 1}`).innerHTML =
+        `<span class="gantt-chip">${crop.rootDepthCm} ${cmUnit}</span>` +
+        `<span class="gantt-chip ${nCls}">${nVal >= 0 ? "+" : ""}${nVal} ${kgUnit} N</span>` +
+        `<span class="gantt-chip ${mCls}">${formatSignedUsd(mVal, "/" + haUnit)}</span>`;
 
       const track = $(`ganttTrack${yr + 1}`);
       const grid = `<div class="gantt-grid-lines">${"<span></span>".repeat(12)}</div>`;
       const isCereal = crop.family.includes("Cereal") || crop.categoryBadge.includes("Cereal");
       const isLegume = crop.family.includes("Legume") || crop.categoryBadge.includes("Legume");
       const catCls = isCereal ? "cat-cereal" : isLegume ? "cat-legume" : "cat-oilseed";
+      const coverWord = isUa ? "Покрив" : "Cover";
 
       let barsHtml = "";
       if (!crop.overwinters) {
+        const spanMonths = crop.harvestMonth - crop.sowMonth + 1;
         const leftPct = ((crop.sowMonth - 1) / 12) * 100;
-        const widthPct = ((crop.harvestMonth - crop.sowMonth + 1) / 12) * 100;
-        barsHtml += `<div class="gantt-bar ${catCls}" style="left:${leftPct.toFixed(2)}%;width:${widthPct.toFixed(2)}%;" title="${escapeHtml(cropShort)} (${escapeHtml(cropWin)})">${escapeHtml(cropShort)}</div>`;
+        const widthPct = (spanMonths / 12) * 100;
+        const winSpan = `${monthsArr[crop.sowMonth - 1]}\u2013${monthsArr[crop.harvestMonth - 1]}`;
+        const barLabel = spanMonths >= 4 ? `${escapeHtml(cropShort)} \u00B7 ${winSpan}` : escapeHtml(cropShort);
+        barsHtml += `<div class="gantt-bar ${catCls}" style="left:${leftPct.toFixed(2)}%;width:${widthPct.toFixed(2)}%;" title="${escapeHtml(getCropName(cropId))} (${escapeHtml(cropWin)})">${barLabel}</div>`;
         if (state.useCoverCrop && crop.harvestMonth < 12) {
+          const covMonths = 12 - crop.harvestMonth;
           const covLeft = (crop.harvestMonth / 12) * 100;
-          const covW = ((12 - crop.harvestMonth) / 12) * 100;
-          barsHtml += `<div class="gantt-bar cat-cover" style="left:${covLeft.toFixed(2)}%;width:${covW.toFixed(2)}%;" title="${isUa ? "Покривна культура" : "Winter Cover Crop"}">${isUa ? "Покрив" : "Cover"}</div>`;
+          const covW = (covMonths / 12) * 100;
+          const covSpan = `${monthsArr[crop.harvestMonth]}\u2013${monthsArr[11]}`;
+          const covTip = `${isUa ? "Покривна культура" : "Winter Cover Crop"} (${covSpan})`;
+          const covContent = covMonths >= 4
+            ? `${coverLeafSvg}<span>${coverWord} \u00B7 ${covSpan}</span>`
+            : covMonths >= 2
+              ? `${coverLeafSvg}<span>${coverWord}</span>`
+              : coverLeafSvg;
+          barsHtml += `<div class="gantt-bar cat-cover${covMonths < 2 ? " is-compact" : ""}" style="left:${covLeft.toFixed(2)}%;width:${covW.toFixed(2)}%;" title="${covTip}">${covContent}</div>`;
         }
       } else {
         const springW = (crop.harvestMonth / 12) * 100;
+        const fallMonths = 13 - crop.sowMonth;
         const fallLeft = ((crop.sowMonth - 1) / 12) * 100;
-        const fallW = ((13 - crop.sowMonth) / 12) * 100;
-        barsHtml += `<div class="gantt-bar ${catCls}" style="left:0%;width:${springW.toFixed(2)}%;" title="${isUa ? "Збір" : "Harvest"} ${monthsArr[crop.harvestMonth - 1]}">${escapeHtml(cropShort)} ${isUa ? "Збір" : "Harvest"}</div>`;
+        const fallW = (fallMonths / 12) * 100;
+        const harvWord = isUa ? "Збір" : "Harvest";
+        const sowWord = isUa ? "Сівба" : "Sow";
+        const springSpan = `${monthsArr[0]}\u2013${monthsArr[crop.harvestMonth - 1]}`;
+        const fallSpan = `${monthsArr[crop.sowMonth - 1]}\u2013${monthsArr[11]}`;
+        const springLabel = crop.harvestMonth >= 5
+          ? `${escapeHtml(cropShort)} \u00B7 ${harvWord} (${springSpan})`
+          : `${escapeHtml(cropShort)} \u00B7 ${harvWord}`;
+        const fallLabel = fallMonths >= 4 ? `${sowWord} \u00B7 ${fallSpan}` : sowWord;
+
+        barsHtml += `<div class="gantt-bar ${catCls}" style="left:0%;width:${springW.toFixed(2)}%;" title="${escapeHtml(getCropName(cropId))} \u00B7 ${harvWord} (${springSpan})">${springLabel}</div>`;
         if (state.useCoverCrop && crop.harvestMonth + 1 < crop.sowMonth) {
+          const gapMonths = crop.sowMonth - 1 - crop.harvestMonth;
           const gapLeft = (crop.harvestMonth / 12) * 100;
-          const gapW = ((crop.sowMonth - 1 - crop.harvestMonth) / 12) * 100;
-          barsHtml += `<div class="gantt-bar cat-cover" style="left:${gapLeft.toFixed(2)}%;width:${gapW.toFixed(2)}%;" title="${isUa ? "Літній сидерат" : "Summer Catch Cover"}">${isUa ? "Покрив" : "Cover"}</div>`;
+          const gapW = (gapMonths / 12) * 100;
+          const gapSpan = gapMonths === 1 ? monthsArr[crop.harvestMonth] : `${monthsArr[crop.harvestMonth]}\u2013${monthsArr[crop.sowMonth - 2]}`;
+          const gapTip = `${isUa ? "Проміжний сидерат" : "Summer Catch Cover"} (${gapSpan})`;
+          const gapContent = gapMonths >= 2 ? `${coverLeafSvg}<span>${coverWord}</span>` : coverLeafSvg;
+          barsHtml += `<div class="gantt-bar cat-cover${gapMonths < 2 ? " is-compact" : ""}" style="left:${gapLeft.toFixed(2)}%;width:${gapW.toFixed(2)}%;" title="${gapTip}">${gapContent}</div>`;
         }
-        barsHtml += `<div class="gantt-bar ${catCls}" style="left:${fallLeft.toFixed(2)}%;width:${fallW.toFixed(2)}%;" title="${isUa ? "Сівба" : "Sow"} ${monthsArr[crop.sowMonth - 1]}">${isUa ? "Сівба" : "Sow"}</div>`;
+        barsHtml += `<div class="gantt-bar ${catCls}" style="left:${fallLeft.toFixed(2)}%;width:${fallW.toFixed(2)}%;" title="${sowWord} ${monthsArr[crop.sowMonth - 1]} (${fallSpan})">${fallLabel}</div>`;
       }
 
       track.innerHTML = grid + barsHtml;
@@ -1630,9 +1748,9 @@
       ? `${recSim.avgWaterMm} мм проти ${tradSim.avgWaterMm} мм сер.`
       : `${recSim.avgWaterMm} mm vs ${tradSim.avgWaterMm} mm avg`;
 
-    $("impactProfitDelta").textContent = `${marginDiffHa >= 0 ? "+" : ""}$${marginDiffHa}/${haUnit}`;
+    $("impactProfitDelta").textContent = formatSignedUsd(marginDiffHa, "/" + haUnit);
     $("impactProfitDelta").className = `kpi-val ${marginDiffHa >= 0 ? "kpi-green" : ""}`;
-    $("impactProfitSub").textContent = `${totalParcelUsd >= 0 ? "+" : ""}$${totalParcelUsd.toLocaleString()} (${areaHa.toFixed(1)} ${haUnit})`;
+    $("impactProfitSub").textContent = `${formatSignedUsd(totalParcelUsd)} (${areaHa.toFixed(1)} ${haUnit})`;
 
     $("impactSomDelta").textContent = `${somGainDiff >= 0 ? "+" : ""}${somGainDiff}%`;
     $("impactSomSub").textContent = isUa
@@ -1653,7 +1771,7 @@
           <td><strong>${escapeHtml(getCropShortName(ry.cropId))}</strong></td>
           <td style="color:var(--ink-muted)">${escapeHtml(getCropShortName(ty.cropId))}</td>
           <td class="table-num">${ry.waterEndMm} ${waterUnit} <span style="color:var(--ink-muted)">(${ty.waterEndMm})</span></td>
-          <td class="table-num"><strong>$${ry.marginUsdHa}</strong> <span style="color:${mDiff >= 0 ? "var(--accent)" : "var(--risk-red)"}">(${mDiff >= 0 ? "+" : ""}${mDiff})</span></td>
+          <td class="table-num"><strong>${formatUsd(ry.marginUsdHa)}</strong> <span style="color:${mDiff >= 0 ? "var(--accent)" : "var(--risk-red)"}">(${mDiff >= 0 ? "+" : ""}${mDiff})</span></td>
         </tr>`;
       })
       .join("");
@@ -1670,10 +1788,10 @@
 
     $("reportVerdictTitle").textContent = `${getPriorityModeLabel(state.priorityMode) || "Custom"} — ${getFieldName(field)}`;
     if (state.lang === "ua") {
-      $("reportVerdictDesc").textContent = `Призначена 4-річна сівозміна збільшує запас вологи кореневого шару на ${waterDiff >= 0 ? "+" : ""}${waterDiff} мм і забезпечує ${marginDiffHa >= 0 ? "+" : ""}$${marginDiffHa}/га порівняно з базовою практикою.`;
+      $("reportVerdictDesc").textContent = `Призначена 4-річна сівозміна збільшує запас вологи кореневого шару на ${waterDiff >= 0 ? "+" : ""}${waterDiff} мм і забезпечує ${formatSignedUsd(marginDiffHa, "/га")} порівняно з базовою практикою.`;
       $("reportFieldMeta").textContent = `Площа: ${eff.areaHa.toFixed(1)} га \u00B7 Ґрунт: ${getSoilName(eff.soil.id)} (pH ${eff.ph}, SOM ${eff.somPct}%) \u00B7 Попередник: ${getCropShortName(eff.prevCrop)}`;
     } else {
-      $("reportVerdictDesc").textContent = `Prescribed 4-year sequence improves root-zone moisture reserve by ${waterDiff >= 0 ? "+" : ""}${waterDiff} mm and delivers ${marginDiffHa >= 0 ? "+" : ""}$${marginDiffHa}/ha vs regional baseline.`;
+      $("reportVerdictDesc").textContent = `Prescribed 4-year sequence improves root-zone moisture reserve by ${waterDiff >= 0 ? "+" : ""}${waterDiff} mm and delivers ${formatSignedUsd(marginDiffHa, "/ha")} vs regional baseline.`;
       $("reportFieldMeta").textContent = `Parcel Area: ${eff.areaHa.toFixed(1)} ha \u00B7 Soil: ${eff.soil.name} (pH ${eff.ph}, SOM ${eff.somPct}%) \u00B7 Prev Crop: ${DATA.crops[eff.prevCrop]?.shortName}`;
     }
 
@@ -1684,7 +1802,7 @@
           <td class="table-num">${ry.year}</td>
           <td><strong>${escapeHtml(getCropName(ry.cropId))}</strong><br><span style="font-size:10.5px;color:var(--ink-muted)">${escapeHtml(getCropWindow(ry.cropId))}</span></td>
           <td>${escapeHtml(coverName)}${state.useNoTill ? " + No-Till" : ""}</td>
-          <td class="table-num">$${ry.marginUsdHa}</td>
+          <td class="table-num">${formatUsd(ry.marginUsdHa)}</td>
           <td class="table-num">${ry.waterEndMm} ${state.lang === "ua" ? "мм" : "mm"}</td>
         </tr>`;
       })
@@ -1741,9 +1859,12 @@
 
     $("printSheet").innerHTML = `
       <div class="ps-header">
-        <div>
-          <h1 class="ps-title">${titleStr}</h1>
-          <p class="ps-sub">${escapeHtml(fName)} (${escapeHtml(fRegion)}, ${escapeHtml(fCountry)}) &middot; ${field.lat.toFixed(4)}, ${field.lon.toFixed(4)}</p>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <img src="logo.svg" alt="Field Shift logo" style="width:28px;height:28px;border-radius:6px;flex-shrink:0;">
+          <div>
+            <h1 class="ps-title">${titleStr}</h1>
+            <p class="ps-sub">${escapeHtml(fName)} (${escapeHtml(fRegion)}, ${escapeHtml(fCountry)}) &middot; ${field.lat.toFixed(4)}, ${field.lon.toFixed(4)}</p>
+          </div>
         </div>
         <div style="text-align:right;font-size:10.5px;">
           <strong>${genStr}</strong><br>
@@ -1787,7 +1908,7 @@
                 <td>${c.rootDepthCm} ${isUa ? "см" : "cm"}</td>
                 <td>${escapeHtml(coverTitle)}${state.useNoTill ? " / No-Till" : ""}</td>
                 <td>${ry.waterEndMm} ${isUa ? "мм" : "mm"} (${isUa ? "проти" : "vs"} ${ty.waterEndMm})</td>
-                <td>$${ry.marginUsdHa} (${isUa ? "проти" : "vs"} $${ty.marginUsdHa})</td>
+                <td>${formatUsd(ry.marginUsdHa)} (${isUa ? "проти" : "vs"} ${formatUsd(ty.marginUsdHa)})</td>
               </tr>`;
             })
             .join("")}
@@ -1803,6 +1924,103 @@
         ${isUa
           ? "Система підтримки агрономічних рішень Field Shift GIS \u00B7 Розрахунки на базі кліматології NASA POWER, вологості SMAP, Open-Meteo ECMWF та ISRIC SoilGrids v2.0."
           : "Field Shift Agronomic GIS Decision Support \u00B7 Models powered by NASA POWER Climatology, SMAP Root Moisture, Open-Meteo ECMWF & ISRIC SoilGrids v2.0."}
+      </div>
+    `;
+  }
+
+  function buildPortfolioPrintSheet() {
+    const isUa = state.lang === "ua";
+    const haUnit = isUa ? "га" : "ha";
+    const mmUnit = isUa ? "мм" : "mm";
+    let totalHa = 0;
+    let totalMarginDeltaUsd = 0;
+    let totalWaterGainWeighted = 0;
+
+    const rowsHtml = state.fields
+      .map((f) => {
+        const plan = f.selectedPlan || getPresetSequence(f, state.priorityMode);
+        const sim = simulateRotation(
+          f,
+          plan,
+          f.useCoverCrop !== false,
+          f.coverCropId || "rye_vetch",
+          f.useNoTill !== false
+        );
+        const trad = simulateRotation(f, f.traditionalRotation, false, "rye_vetch", false);
+        const area = Number(f.defaultAreaHa || 40);
+        const wDiff = sim.avgWaterMm - trad.avgWaterMm;
+        const pDiffTotal = Math.round((sim.totalMarginUsdHa - trad.totalMarginUsdHa) * area);
+        totalHa += area;
+        totalMarginDeltaUsd += pDiffTotal;
+        totalWaterGainWeighted += wDiff * area;
+
+        const fName = getFieldName(f);
+        const fRegion = getFieldRegion(f);
+        const fCountry = getFieldCountry(f);
+        const locLabel = fRegion ? `${fRegion}, ${fCountry}` : fCountry;
+        const seqNames = plan.map((id) => getCropShortName(id)).join(" \u2192 ");
+        return `<tr>
+          <td><strong>${escapeHtml(fName)}</strong></td>
+          <td>${escapeHtml(locLabel)}</td>
+          <td>${area.toFixed(1)} ${haUnit}</td>
+          <td>${f.nasaBaseline.rootMoisturePct}%</td>
+          <td>${escapeHtml(seqNames)}</td>
+          <td>${wDiff >= 0 ? "+" : ""}${wDiff} ${mmUnit}</td>
+          <td><strong>${pDiffTotal >= 0 ? "+" : ""}$${pDiffTotal.toLocaleString()}</strong></td>
+        </tr>`;
+      })
+      .join("");
+
+    const avgWaterGain = totalHa > 0 ? Math.round(totalWaterGainWeighted / totalHa) : 0;
+    const titleStr = isUa ? "Field Shift \u2014 Зведений звіт портфеля ферми" : "Field Shift \u2014 Farm Portfolio A4 Summary";
+    const subStr = isUa
+      ? `Охоплено ділянок: ${state.fields.length} \u00B7 Пріоритет: ${getPriorityModeLabel(state.priorityMode)}`
+      : `Parcels included: ${state.fields.length} \u00B7 Strategy: ${getPriorityModeLabel(state.priorityMode)}`;
+    const genStr = isUa ? `Створено ${new Date().toISOString().slice(0, 10)}` : `Generated ${new Date().toISOString().slice(0, 10)}`;
+    const authStr = isUa ? "Верифіковано NASA POWER & SMAP" : "NASA POWER & SMAP Verified";
+
+    $("printSheet").innerHTML = `
+      <div class="ps-header">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <img src="logo.svg" alt="Field Shift logo" style="width:28px;height:28px;border-radius:6px;flex-shrink:0;">
+          <div>
+            <h1 class="ps-title">${titleStr}</h1>
+            <p class="ps-sub">${escapeHtml(subStr)}</p>
+          </div>
+        </div>
+        <div style="text-align:right;font-size:10.5px;">
+          <strong>${genStr}</strong><br>
+          ${authStr}
+        </div>
+      </div>
+
+      <div class="ps-grid-4">
+        <div class="ps-box"><span>${isUa ? "Загальна площа" : "Total Farm Area"}</span><strong>${totalHa.toFixed(1)} ${haUnit}</strong></div>
+        <div class="ps-box"><span>${isUa ? "Кількість полів" : "Tracked Parcels"}</span><strong>${state.fields.length}</strong></div>
+        <div class="ps-box"><span>${isUa ? "Сер. приріст вологи" : "Weighted Water Gain"}</span><strong>${avgWaterGain >= 0 ? "+" : ""}${avgWaterGain} ${mmUnit}</strong></div>
+        <div class="ps-box"><span>${isUa ? "Економія / прибуток \u0394" : "4-Yr Farm Profit \u0394"}</span><strong>${totalMarginDeltaUsd >= 0 ? "+" : ""}$${totalMarginDeltaUsd.toLocaleString()}</strong></div>
+      </div>
+
+      <div class="ps-section-title">${isUa ? "Порівняння ділянок портфеля (2027\u20132030)" : "Multi-Parcel Rotation Summary (2027\u20132030)"}</div>
+      <table class="ps-table">
+        <thead>
+          <tr>
+            <th>${isUa ? "Ділянка" : "Parcel"}</th>
+            <th>${isUa ? "Регіон" : "Region"}</th>
+            <th>${isUa ? "Площа" : "Area"}</th>
+            <th>${isUa ? "Волога SMAP" : "SMAP Moist."}</th>
+            <th>${isUa ? "4-річний план" : "4-Yr Plan"}</th>
+            <th>${isUa ? "Волога \u0394" : "Water \u0394"}</th>
+            <th>${isUa ? "Прибуток \u0394" : "4-Yr Profit \u0394"}</th>
+          </tr>
+        </thead>
+        <tbody>${rowsHtml}</tbody>
+      </table>
+
+      <div class="ps-footer">
+        ${isUa
+          ? "Зведений звіт портфеля Field Shift GIS \u00B7 Кліматичні ряди NASA POWER, вологість SMAP L4, прогноз Open-Meteo та SoilGrids v2.0."
+          : "Field Shift Portfolio Summary \u00B7 Powered by NASA POWER Climatology, SMAP L4 Root Moisture, Open-Meteo ECMWF & ISRIC SoilGrids v2.0."}
       </div>
     `;
   }
@@ -1870,11 +2088,15 @@
     const et = field.nasaBaseline.monthlyEtMm;
     const maxVal = Math.max(100, ...rain, ...et) * 1.12;
 
+    const isDark = state.theme === "dark";
+    const gridColor = isDark ? "rgba(148, 184, 224, 0.16)" : "#DCE9F6";
+    const labelColor = isDark ? "#94B0D0" : "#587294";
+
     ctx.clearRect(0, 0, w, h);
-    ctx.strokeStyle = "#E4E7EC";
+    ctx.strokeStyle = gridColor;
     ctx.lineWidth = 1;
     ctx.font = "10px Inter, sans-serif";
-    ctx.fillStyle = "#6B7280";
+    ctx.fillStyle = labelColor;
 
     for (let g = 0; g <= 3; g += 1) {
       const yVal = Math.round((maxVal * g) / 3);
@@ -1894,7 +2116,7 @@
     for (let i = 0; i < 12; i += 1) {
       const cx = pad.left + i * colW + colW * 0.5;
       const barH = (rain[i] / maxVal) * ch;
-      ctx.fillStyle = "rgba(14, 165, 233, 0.72)";
+      ctx.fillStyle = isDark ? "rgba(56, 189, 248, 0.78)" : "rgba(2, 132, 199, 0.78)";
       ctx.beginPath();
       ctx.roundRect(cx - barW / 2, pad.top + ch - barH, barW, barH, [3, 3, 0, 0]);
       ctx.fill();
@@ -1902,7 +2124,7 @@
       const etY = pad.top + ch - (et[i] / maxVal) * ch;
       etPoints.push({ x: cx, y: etY });
 
-      ctx.fillStyle = "#6B7280";
+      ctx.fillStyle = labelColor;
       ctx.textAlign = "center";
       const monthInitial = state.lang === "ua"
         ? ["С", "Л", "Б", "К", "Т", "Ч", "Л", "С", "В", "Ж", "Л", "Г"][i]
@@ -1916,7 +2138,7 @@
     }
     ctx.textAlign = "left";
 
-    ctx.strokeStyle = "#EA580C";
+    ctx.strokeStyle = isDark ? "#FB923C" : "#EA580C";
     ctx.lineWidth = 2.2;
     ctx.beginPath();
     etPoints.forEach((p, idx) => {
@@ -1926,8 +2148,8 @@
     ctx.stroke();
 
     for (const p of etPoints) {
-      ctx.fillStyle = "#FFFFFF";
-      ctx.strokeStyle = "#EA580C";
+      ctx.fillStyle = isDark ? "#0F172A" : "#FFFFFF";
+      ctx.strokeStyle = isDark ? "#FB923C" : "#EA580C";
       ctx.lineWidth = 1.8;
       ctx.beginPath();
       ctx.arc(p.x, p.y, 3, 0, Math.PI * 2);
@@ -1960,9 +2182,16 @@
     const recSeries = [field.nasaBaseline.rootAvailableWaterMm, ...recSim.yearly.map((y) => y.waterEndMm)];
     const tradSeries = [field.nasaBaseline.rootAvailableWaterMm, ...tradSim.yearly.map((y) => y.waterEndMm)];
 
+    const isDark = state.theme === "dark";
+    const gridColor = isDark ? "rgba(148, 184, 224, 0.16)" : "#DCE9F6";
+    const labelColor = isDark ? "#94B0D0" : "#587294";
+    const recColor = isDark ? "#10B981" : "#07917B";
+    const tradColor = isDark ? "#64748B" : "#94A3B8";
+    const stressColor = isDark ? "#F87171" : "#DC2626";
+
     ctx.clearRect(0, 0, w, h);
     ctx.font = "10px Inter, sans-serif";
-    ctx.strokeStyle = "#E4E7EC";
+    ctx.strokeStyle = gridColor;
     ctx.lineWidth = 1;
 
     for (let g = 0; g <= 3; g += 1) {
@@ -1971,19 +2200,19 @@
       ctx.moveTo(pad.left, y);
       ctx.lineTo(w - pad.right, y);
       ctx.stroke();
-      ctx.fillStyle = "#6B7280";
+      ctx.fillStyle = labelColor;
       ctx.fillText(String(Math.round((maxVal * g) / 3)), 4, y + 3);
     }
 
     const stressY = pad.top + ch - (recSim.wiltingThresholdMm / maxVal) * ch;
     ctx.save();
     ctx.setLineDash([4, 4]);
-    ctx.strokeStyle = "#DC2626";
+    ctx.strokeStyle = stressColor;
     ctx.beginPath();
     ctx.moveTo(pad.left, stressY);
     ctx.lineTo(w - pad.right, stressY);
     ctx.stroke();
-    ctx.fillStyle = "#DC2626";
+    ctx.fillStyle = stressColor;
     ctx.fillText(state.lang === "ua" ? "Критичний поріг" : "Stress floor", pad.left + 4, stressY - 4);
     ctx.restore();
 
@@ -2001,19 +2230,19 @@
       ctx.stroke();
     };
 
-    drawLine(tradSeries, "#94A3B8", 2);
-    drawLine(recSeries, "#15803D", 2.8);
+    drawLine(tradSeries, tradColor, 2);
+    drawLine(recSeries, recColor, 2.8);
 
     const hoverItems = [];
     labels.forEach((lbl, idx) => {
       const px = pad.left + idx * stepX;
-      ctx.fillStyle = "#6B7280";
+      ctx.fillStyle = labelColor;
       ctx.textAlign = "center";
       ctx.fillText(lbl, px, h - 8);
 
       [
-        { val: tradSeries[idx], c: "#94A3B8" },
-        { val: recSeries[idx], c: "#15803D" }
+        { val: tradSeries[idx], c: tradColor },
+        { val: recSeries[idx], c: recColor }
       ].forEach((pt) => {
         const py = pad.top + ch - (pt.val / maxVal) * ch;
         ctx.fillStyle = pt.c;
@@ -2051,10 +2280,13 @@
       tradCum.push(tAcc);
     }
 
+    const isDark = state.theme === "dark";
+    const gridColor = isDark ? "rgba(148, 184, 224, 0.16)" : "#DCE9F6";
+    const labelColor = isDark ? "#94B0D0" : "#587294";
     const maxVal = Math.max(400, ...recCum, ...tradCum) * 1.15;
     ctx.clearRect(0, 0, w, h);
     ctx.font = "10px Inter, sans-serif";
-    ctx.strokeStyle = "#E4E7EC";
+    ctx.strokeStyle = gridColor;
 
     for (let g = 0; g <= 3; g += 1) {
       const y = pad.top + ch - (g / 3) * ch;
@@ -2062,7 +2294,7 @@
       ctx.moveTo(pad.left, y);
       ctx.lineTo(w - pad.right, y);
       ctx.stroke();
-      ctx.fillStyle = "#6B7280";
+      ctx.fillStyle = labelColor;
       ctx.fillText(`$${Math.round((maxVal * g) / 3)}`, 2, y + 3);
     }
 
@@ -2075,17 +2307,17 @@
       const rH = Math.max(2, (recCum[i] / maxVal) * ch);
       const tH = Math.max(2, (tradCum[i] / maxVal) * ch);
 
-      ctx.fillStyle = "#15803D";
+      ctx.fillStyle = isDark ? "#10B981" : "#07917B";
       ctx.beginPath();
       ctx.roundRect(cx - barW - 2, pad.top + ch - rH, barW, rH, [3, 3, 0, 0]);
       ctx.fill();
 
-      ctx.fillStyle = "#CBD5E1";
+      ctx.fillStyle = isDark ? "#475569" : "#B9D4EA";
       ctx.beginPath();
       ctx.roundRect(cx + 2, pad.top + ch - tH, barW, tH, [3, 3, 0, 0]);
       ctx.fill();
 
-      ctx.fillStyle = "#6B7280";
+      ctx.fillStyle = labelColor;
       ctx.textAlign = "center";
       ctx.fillText(String(2027 + i), cx, h - 8);
 
@@ -2095,8 +2327,8 @@
 
     canvas._chartMeta = { items: hoverItems };
     attachChartHover(canvas, $("profitTooltip"), (it) => state.lang === "ua"
-      ? `<strong>${it.year} Кумул.</strong><br>Field Shift: $${it.rec}/га &middot; Традиційна: $${it.trad}/га`
-      : `<strong>${it.year} Cumul.</strong><br>Field Shift: $${it.rec}/ha &middot; Trad: $${it.trad}/ha`);
+      ? `<strong>${it.year} Кумул.</strong><br>Field Shift: ${formatUsd(it.rec)}/га &middot; Традиційна: ${formatUsd(it.trad)}/га`
+      : `<strong>${it.year} Cumul.</strong><br>Field Shift: ${formatUsd(it.rec)}/ha &middot; Trad: ${formatUsd(it.trad)}/ha`);
   }
 
   function renderPortfolioModal() {
@@ -2219,6 +2451,8 @@
     renderImpactTab(field, recSim, tradSim);
     renderReportTab(field, recSim, tradSim);
     renderScienceModal();
+    syncCustomSelects();
+    syncRangeTracks();
   }
 
   function setActiveTab(tabName) {
@@ -2259,13 +2493,17 @@
     $("newFieldPrevCropSelect").innerHTML = cropOpts;
     for (let y = 1; y <= 4; y += 1) {
       $(`year${y}Select`).innerHTML = Object.values(DATA.crops)
-        .map((c) => `<option value="${c.id}">${escapeHtml(getCropShortName(c.id))} \u2014 ${escapeHtml(getCropBadge(c.id))}</option>`)
+        .map((c) => {
+          const nStr = c.nitrogenBalanceKg >= 0 ? `+${c.nitrogenBalanceKg}` : `${c.nitrogenBalanceKg}`;
+          return `<option value="${c.id}" data-meta="${nStr} N \u00B7 ${c.droughtToleranceScore}/100">${escapeHtml(getCropName(c.id))}</option>`;
+        })
         .join("");
     }
 
     $("coverCropSelect").innerHTML = Object.values(DATA.coverCropBridges)
       .map((cb) => `<option value="${cb.id}">${escapeHtml(getCoverCropName(cb.id))}</option>`)
       .join("");
+    syncCustomSelects();
   }
 
   function handleGeoJsonImport(file) {
@@ -2421,74 +2659,314 @@
     showToast("Downloaded 4-year CSV schedule");
   }
 
+  const customSelectRegistry = [];
+  let openSelectRecord = null;
+  let selectPortalEl = null;
+
+  function getSelectVariantClass(sel) {
+    if (sel.classList.contains("micro-select")) return "fs-variant-micro";
+    if (sel.classList.contains("micro-select-wide")) return "fs-variant-wide";
+    if (sel.classList.contains("gantt-select")) return "fs-variant-gantt";
+    if (sel.id === "cropSeasonFilter") return "fs-variant-filter";
+    return "";
+  }
+
+  function closeCustomSelect() {
+    if (selectPortalEl) {
+      selectPortalEl.classList.add("is-hidden");
+      selectPortalEl.innerHTML = "";
+    }
+    if (openSelectRecord) {
+      openSelectRecord.wrapper.classList.remove("is-open");
+      openSelectRecord.trigger.setAttribute("aria-expanded", "false");
+      openSelectRecord = null;
+    }
+  }
+
+  function syncSingleCustomSelect(rec) {
+    const sel = rec.select;
+    const selectedOpt = sel.options[sel.selectedIndex] || sel.options[0];
+    rec.labelEl.textContent = selectedOpt ? selectedOpt.textContent : "";
+    rec.trigger.disabled = Boolean(sel.disabled);
+    rec.wrapper.classList.toggle("is-disabled", Boolean(sel.disabled));
+    rec.trigger.title = selectedOpt ? selectedOpt.textContent : "";
+  }
+
+  function syncCustomSelects() {
+    for (const rec of customSelectRegistry) {
+      syncSingleCustomSelect(rec);
+    }
+    if (openSelectRecord) closeCustomSelect();
+  }
+
+  function openCustomSelect(rec) {
+    if (rec.select.disabled) return;
+    if (openSelectRecord === rec) {
+      closeCustomSelect();
+      return;
+    }
+    closeCustomSelect();
+    openSelectRecord = rec;
+    rec.wrapper.classList.add("is-open");
+    rec.trigger.setAttribute("aria-expanded", "true");
+
+    selectPortalEl.innerHTML = "";
+    const curVal = rec.select.value;
+    let selectedBtn = null;
+
+    Array.from(rec.select.options).forEach((opt) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      const isSelected = opt.value === curVal;
+      btn.className = `fs-select-option${isSelected ? " is-selected" : ""}`;
+      btn.setAttribute("role", "option");
+      btn.setAttribute("aria-selected", String(isSelected));
+      btn.disabled = Boolean(opt.disabled);
+
+      const span = document.createElement("span");
+      span.className = "fs-select-opt-main";
+      span.textContent = opt.textContent;
+      btn.appendChild(span);
+
+      if (opt.dataset?.meta) {
+        const meta = document.createElement("span");
+        meta.className = "fs-select-opt-meta";
+        meta.textContent = opt.dataset.meta;
+        btn.appendChild(meta);
+      }
+
+      if (isSelected) {
+        btn.insertAdjacentHTML(
+          "beforeend",
+          "<svg class=\"fs-select-check\" viewBox=\"0 0 16 16\" width=\"13\" height=\"13\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M3.5 8.5l3 3 6-6.5\"/></svg>"
+        );
+        selectedBtn = btn;
+      }
+
+      btn.addEventListener("click", (ev) => {
+        ev.stopPropagation();
+        if (opt.disabled) return;
+        rec.select.value = opt.value;
+        syncSingleCustomSelect(rec);
+        closeCustomSelect();
+        rec.select.dispatchEvent(new Event("change", { bubbles: true }));
+      });
+
+      selectPortalEl.appendChild(btn);
+    });
+
+    const rect = rec.trigger.getBoundingClientRect();
+    const minW = Math.max(rect.width, 174);
+    const maxW = Math.min(340, window.innerWidth - 16);
+    selectPortalEl.style.minWidth = `${minW}px`;
+    selectPortalEl.style.maxWidth = `${maxW}px`;
+    selectPortalEl.classList.remove("is-hidden");
+
+    const portalW = Math.max(minW, selectPortalEl.offsetWidth || minW);
+    const portalH = Math.min(248, selectPortalEl.scrollHeight || 190);
+    const spaceBelow = window.innerHeight - rect.bottom - 10;
+    const placeAbove = spaceBelow < portalH && rect.top > spaceBelow;
+    const topPos = placeAbove ? Math.max(8, rect.top - portalH - 5) : Math.min(window.innerHeight - portalH - 8, rect.bottom + 5);
+    const leftPos = clamp(rect.left, 8, Math.max(8, window.innerWidth - portalW - 8));
+
+    selectPortalEl.style.top = `${Math.round(topPos)}px`;
+    selectPortalEl.style.left = `${Math.round(leftPos)}px`;
+    if (selectedBtn) {
+      requestAnimationFrame(() => selectedBtn.scrollIntoView({ block: "nearest" }));
+    }
+  }
+
+  function initCustomSelects() {
+    if (!selectPortalEl) {
+      selectPortalEl = document.createElement("div");
+      selectPortalEl.id = "fsSelectPortal";
+      selectPortalEl.className = "fs-select-portal is-hidden";
+      selectPortalEl.setAttribute("role", "listbox");
+      document.body.appendChild(selectPortalEl);
+
+      document.addEventListener("pointerdown", (ev) => {
+        if (!openSelectRecord) return;
+        if (openSelectRecord.wrapper.contains(ev.target) || selectPortalEl.contains(ev.target)) return;
+        closeCustomSelect();
+      });
+      document.addEventListener("keydown", (ev) => {
+        if (ev.key === "Escape" && openSelectRecord) closeCustomSelect();
+      });
+      window.addEventListener("resize", closeCustomSelect);
+      document.addEventListener(
+        "scroll",
+        (ev) => {
+          if (openSelectRecord && !selectPortalEl.contains(ev.target)) closeCustomSelect();
+        },
+        true
+      );
+    }
+
+    document.querySelectorAll("select").forEach((sel) => {
+      if (sel.dataset.fsCustomized === "1") return;
+      sel.dataset.fsCustomized = "1";
+      sel.tabIndex = -1;
+      sel.setAttribute("aria-hidden", "true");
+      sel.classList.add("fs-native-select-hidden");
+
+      const wrapper = document.createElement("div");
+      const variant = getSelectVariantClass(sel);
+      wrapper.className = variant ? `fs-select ${variant}` : "fs-select";
+
+      const trigger = document.createElement("button");
+      trigger.type = "button";
+      trigger.className = "fs-select-trigger";
+      trigger.setAttribute("aria-haspopup", "listbox");
+      trigger.setAttribute("aria-expanded", "false");
+      if (sel.id) trigger.dataset.forSelect = sel.id;
+
+      const labelEl = document.createElement("span");
+      labelEl.className = "fs-select-label";
+      trigger.appendChild(labelEl);
+      trigger.insertAdjacentHTML(
+        "beforeend",
+        "<svg class=\"fs-select-chevron\" viewBox=\"0 0 16 16\" width=\"12\" height=\"12\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M4 6l4 4 4-4\"/></svg>"
+      );
+
+      sel.parentNode.insertBefore(wrapper, sel);
+      wrapper.appendChild(sel);
+      wrapper.appendChild(trigger);
+
+      const rec = { select: sel, wrapper, trigger, labelEl };
+      customSelectRegistry.push(rec);
+      syncSingleCustomSelect(rec);
+
+      trigger.addEventListener("click", (ev) => {
+        ev.preventDefault();
+        ev.stopPropagation();
+        openCustomSelect(rec);
+      });
+      trigger.addEventListener("keydown", (ev) => {
+        if (ev.key === "ArrowDown" || ev.key === "ArrowUp" || ev.key === "Enter" || ev.key === " ") {
+          ev.preventDefault();
+          openCustomSelect(rec);
+        }
+      });
+      sel.addEventListener("change", () => syncSingleCustomSelect(rec));
+    });
+  }
+
+  function syncRangeTracks() {
+    document.querySelectorAll('input[type="range"]').forEach((input) => {
+      const min = Number(input.min || 0);
+      const max = Number(input.max || 100);
+      const val = Number(input.value || 0);
+      const pct = max > min ? clamp(((val - min) / (max - min)) * 100, 0, 100) : 0;
+      input.style.setProperty("--range-pct", `${pct.toFixed(1)}%`);
+    });
+  }
+
+  function redrawVisibleCharts() {
+    const f = getActiveField();
+    if (!f) return;
+    if (state.activeTab === "climate") drawClimateChart(f);
+    else if (state.activeTab === "impact") {
+      const recSim = simulateRotation(f, state.planSequence, state.useCoverCrop, state.coverCropId, state.useNoTill);
+      const tradSim = simulateRotation(f, f.traditionalRotation, false, state.coverCropId, false);
+      drawWaterChart(f, recSim, tradSim);
+      drawProfitChart(recSim, tradSim);
+    }
+  }
+
+  function setTopNavActive(id) {
+    document.querySelectorAll(".top-nav-btn").forEach((b) => {
+      b.classList.toggle("is-active", b.id === id);
+    });
+  }
+
+  function setWorkspaceView(viewName) {
+    state.activeView = viewName;
+    $("workspaceBody").classList.toggle("is-hidden", viewName !== "workspace");
+    $("portfolioView").classList.toggle("is-hidden", viewName !== "portfolio");
+    $("cropLibraryView").classList.toggle("is-hidden", viewName !== "crops");
+    $("scienceView").classList.toggle("is-hidden", viewName !== "science");
+
+    const navMap = {
+      workspace: "railMapBtn",
+      portfolio: "railPortfolioBtn",
+      crops: "railCropsBtn",
+      science: "railScienceBtn"
+    };
+    setTopNavActive(navMap[viewName] || "railMapBtn");
+
+    if (viewName === "portfolio") renderPortfolioModal();
+    else if (viewName === "crops") renderCropLibraryModal();
+    else if (viewName === "science") renderScienceModal();
+    else if (viewName === "workspace") {
+      setTimeout(() => {
+        if (map) map.invalidateSize();
+        redrawVisibleCharts();
+      }, 40);
+    }
+  }
+
+  function toggleSidebar(collapsed) {
+    if (state.activeView !== "workspace") setWorkspaceView("workspace");
+    $("appShell").classList.toggle("sidebar-collapsed", collapsed);
+    setTimeout(() => {
+      if (map) map.invalidateSize();
+    }, 210);
+  }
+
+  function toggleInspector(collapsed) {
+    $("appShell").classList.toggle("inspector-collapsed", collapsed);
+    $("inspectorExpandTab").classList.toggle("is-hidden", !collapsed);
+    setTimeout(() => {
+      if (map) map.invalidateSize();
+      redrawVisibleCharts();
+    }, 210);
+  }
+
+  function setBasemap(mode) {
+    if (!map) return;
+    if (mode === "ter") {
+      state.basemap = "ter";
+      $("layerTerBtn").classList.add("is-active");
+      $("layerSatBtn").classList.remove("is-active");
+      if (map.hasLayer(layerSat)) map.removeLayer(layerSat);
+      if (!map.hasLayer(layerTer)) layerTer.addTo(map);
+    } else {
+      state.basemap = "sat";
+      $("layerSatBtn").classList.add("is-active");
+      $("layerTerBtn").classList.remove("is-active");
+      if (map.hasLayer(layerTer)) map.removeLayer(layerTer);
+      if (!map.hasLayer(layerSat)) layerSat.addTo(map);
+    }
+  }
+
+  function applyPriorityMode(modeId, persist = true) {
+    const mode = DATA.priorityModes[modeId];
+    if (!mode) return;
+    state.priorityMode = modeId;
+    state.weights = { ...mode.weights };
+    const field = getActiveField();
+    state.planSequence = getPresetSequence(field, modeId);
+    if (persist && field) {
+      field.selectedPlan = [...state.planSequence];
+      saveFieldsToStorage();
+    }
+    renderAll();
+  }
+
   function triggerPrintReport() {
+    state.printMode = "field";
     buildPrintSheet();
+    setTimeout(() => window.print(), 80);
+  }
+
+  function triggerPortfolioPrint() {
+    state.printMode = "portfolio";
+    buildPortfolioPrintSheet();
     setTimeout(() => window.print(), 80);
   }
 
   function bindEvents() {
     const shell = $("appShell");
-
-    const redrawVisibleCharts = () => {
-      const f = getActiveField();
-      if (!f) return;
-      if (state.activeTab === "climate") drawClimateChart(f);
-      else if (state.activeTab === "impact") {
-        const recSim = simulateRotation(f, state.planSequence, state.useCoverCrop, state.coverCropId, state.useNoTill);
-        const tradSim = simulateRotation(f, f.traditionalRotation, false, state.coverCropId, false);
-        drawWaterChart(f, recSim, tradSim);
-        drawProfitChart(recSim, tradSim);
-      }
-    };
-
-    const setTopNavActive = (id) => {
-      document.querySelectorAll(".top-nav-btn").forEach((b) => {
-        b.classList.toggle("is-active", b.id === id);
-      });
-    };
-
-    const setWorkspaceView = (viewName) => {
-      state.activeView = viewName;
-      $("workspaceBody").classList.toggle("is-hidden", viewName !== "workspace");
-      $("portfolioView").classList.toggle("is-hidden", viewName !== "portfolio");
-      $("cropLibraryView").classList.toggle("is-hidden", viewName !== "crops");
-      $("scienceView").classList.toggle("is-hidden", viewName !== "science");
-
-      const navMap = {
-        workspace: "railMapBtn",
-        portfolio: "railPortfolioBtn",
-        crops: "railCropsBtn",
-        science: "railScienceBtn"
-      };
-      setTopNavActive(navMap[viewName] || "railMapBtn");
-
-      if (viewName === "portfolio") renderPortfolioModal();
-      else if (viewName === "crops") renderCropLibraryModal();
-      else if (viewName === "science") renderScienceModal();
-      else if (viewName === "workspace") {
-        setTimeout(() => {
-          if (map) map.invalidateSize();
-          redrawVisibleCharts();
-        }, 40);
-      }
-    };
-
-    const toggleSidebar = (collapsed) => {
-      if (state.activeView !== "workspace") setWorkspaceView("workspace");
-      shell.classList.toggle("sidebar-collapsed", collapsed);
-      setTimeout(() => {
-        if (map) map.invalidateSize();
-      }, 210);
-    };
-
-    const toggleInspector = (collapsed) => {
-      shell.classList.toggle("inspector-collapsed", collapsed);
-      $("inspectorExpandTab").classList.toggle("is-hidden", !collapsed);
-      setTimeout(() => {
-        if (map) map.invalidateSize();
-        redrawVisibleCharts();
-      }, 210);
-    };
 
     $("collapseSidebarBtn").addEventListener("click", () => toggleSidebar(true));
     $("sidebarExpandTab").addEventListener("click", () => {
@@ -2502,12 +2980,23 @@
     $("collapseInspectorBtn").addEventListener("click", () => toggleInspector(true));
     $("inspectorExpandTab").addEventListener("click", () => toggleInspector(false));
 
+    $("railWorkspaceBtn")?.addEventListener("click", () => {
+      if (state.activeView !== "workspace") {
+        setWorkspaceView("workspace");
+        toggleSidebar(false);
+        return;
+      }
+      toggleSidebar(!shell.classList.contains("sidebar-collapsed"));
+    });
+
     $("railMapBtn").addEventListener("click", () => setWorkspaceView("workspace"));
     $("railPortfolioBtn").addEventListener("click", () => setWorkspaceView("portfolio"));
     $("railCropsBtn").addEventListener("click", () => setWorkspaceView("crops"));
     $("railScienceBtn").addEventListener("click", () => setWorkspaceView("science"));
-    $("railPrintBtn").addEventListener("click", triggerPrintReport);
+    $("railPrintBtn").addEventListener("click", triggerPortfolioPrint);
+    $("tourRestartBtn")?.addEventListener("click", () => startTour());
 
+    $("themeToggleBtn")?.addEventListener("click", () => applyTheme(state.theme === "dark" ? "light" : "dark", true));
     $("langBtnEn")?.addEventListener("click", () => setLanguage("en"));
     $("langBtnUa")?.addEventListener("click", () => setLanguage("ua"));
 
@@ -2639,34 +3128,15 @@
       ev.target.value = "";
     });
 
-    $("layerSatBtn").addEventListener("click", () => {
-      state.basemap = "sat";
-      $("layerSatBtn").classList.add("is-active");
-      $("layerTerBtn").classList.remove("is-active");
-      if (map.hasLayer(layerTer)) map.removeLayer(layerTer);
-      if (!map.hasLayer(layerSat)) layerSat.addTo(map);
-    });
-
-    $("layerTerBtn").addEventListener("click", () => {
-      state.basemap = "ter";
-      $("layerTerBtn").classList.add("is-active");
-      $("layerSatBtn").classList.remove("is-active");
-      if (map.hasLayer(layerSat)) map.removeLayer(layerSat);
-      if (!map.hasLayer(layerTer)) layerTer.addTo(map);
-    });
+    $("layerSatBtn").addEventListener("click", () => setBasemap("sat"));
+    $("layerTerBtn").addEventListener("click", () => setBasemap("ter"));
 
     $("toggleLabelsBtn").addEventListener("click", () => {
-      state.showLabels = !state.showLabels;
-      $("toggleLabelsBtn").classList.toggle("is-active", state.showLabels);
-      if (state.showLabels) layerLabels.addTo(map);
-      else map.removeLayer(layerLabels);
+      setLabelsVisible(!state.showLabels);
     });
 
     $("toggleZonesBtn").addEventListener("click", () => {
-      state.showZones = !state.showZones;
-      $("toggleZonesBtn").classList.toggle("is-active", state.showZones);
-      $("mapZonesLegend").classList.toggle("is-hidden", !state.showZones);
-      renderZonesOverlay();
+      setZonesVisible(!state.showZones);
     });
 
     $("toggleAllFieldsBtn").addEventListener("click", () => {
@@ -2720,16 +3190,7 @@
     $("priorityModeGroup").addEventListener("click", (ev) => {
       const btn = ev.target.closest("[data-mode]");
       if (!btn) return;
-      const modeId = btn.dataset.mode;
-      const mode = DATA.priorityModes[modeId];
-      if (!mode) return;
-      state.priorityMode = modeId;
-      state.weights = { ...mode.weights };
-      const field = getActiveField();
-      state.planSequence = getPresetSequence(field, modeId);
-      field.selectedPlan = [...state.planSequence];
-      saveFieldsToStorage();
-      renderAll();
+      applyPriorityMode(btn.dataset.mode, true);
     });
 
     const onWeightChange = (key, val) => {
@@ -2788,17 +3249,916 @@
       showToast(`Saved 4-yr plan & overrides to ${f.name}`);
     });
 
-    window.addEventListener("beforeprint", buildPrintSheet);
+    window.addEventListener("beforeprint", () => {
+      if (state.printMode === "portfolio") buildPortfolioPrintSheet();
+      else buildPrintSheet();
+    });
+    window.addEventListener("afterprint", () => {
+      state.printMode = "field";
+    });
     window.addEventListener("resize", redrawVisibleCharts);
   }
 
+  const TOUR_STORAGE_KEY = "field_shift_tour_done";
+  let tourActive = false;
+  let tourStepIndex = 0;
+  let tourTimers = [];
+  let tourBackup = null;
+  let tourTargetsOverride = null;
+
+  function scheduleTour(fn, delayMs) {
+    const id = setTimeout(fn, delayMs);
+    tourTimers.push(id);
+    return id;
+  }
+
+  function clearTourTimers() {
+    while (tourTimers.length) {
+      clearTimeout(tourTimers.pop());
+    }
+    activeProbeSeq += 1;
+  }
+
+  let tourTransitionUntil = 0;
+
+  function closeTourPopupOnly() {
+    if (probePopup && map) {
+      map.closePopup(probePopup);
+    }
+  }
+
+  function getInspectorScroller() {
+    return document.querySelector(".inspector-body");
+  }
+
+  function setInspectorScrollTop(topPx, smooth = false) {
+    const scroller = getInspectorScroller();
+    if (!scroller) return;
+    const maxScroll = Math.max(0, scroller.scrollHeight - scroller.clientHeight);
+    const nextTop = clamp(Math.round(Number(topPx) || 0), 0, maxScroll);
+    if (smooth) {
+      scroller.scrollTo({ top: nextTop, behavior: "smooth" });
+    } else {
+      scroller.scrollTop = nextTop;
+    }
+  }
+
+  function scrollContainerToElement(scroller, el, align = "center", smooth = false, edgePad = 14) {
+    if (!scroller || !el) return;
+    const sRect = scroller.getBoundingClientRect();
+    const eRect = el.getBoundingClientRect();
+    if (sRect.height <= 0 || eRect.height <= 0) return;
+
+    const relTop = eRect.top - sRect.top + scroller.scrollTop;
+    let targetScroll = scroller.scrollTop;
+
+    if (align === "top") {
+      targetScroll = relTop - edgePad;
+    } else if (align === "center") {
+      if (eRect.height + edgePad * 2 >= sRect.height) {
+        targetScroll = relTop - edgePad;
+      } else {
+        targetScroll = relTop - (sRect.height - eRect.height) / 2;
+      }
+    } else {
+      if (eRect.top < sRect.top + edgePad) {
+        targetScroll = relTop - edgePad;
+      } else if (eRect.bottom > sRect.bottom - edgePad) {
+        targetScroll = relTop + eRect.height - sRect.height + edgePad;
+      }
+    }
+
+    const maxScroll = Math.max(0, scroller.scrollHeight - scroller.clientHeight);
+    const clamped = clamp(Math.round(targetScroll), 0, maxScroll);
+    if (smooth) {
+      scroller.scrollTo({ top: clamped, behavior: "smooth" });
+    } else {
+      scroller.scrollTop = clamped;
+    }
+  }
+
+  function scrollFieldListToActive(smooth = false) {
+    const list = $("fieldList");
+    const active = list?.querySelector(".field-card.is-active");
+    if (list && active) {
+      scrollContainerToElement(list, active, "center", smooth, 8);
+    }
+  }
+
+  function ensureStepInView(targetOrList, align = "center", smooth = false, edgePad = 14) {
+    const raw = Array.isArray(targetOrList) ? targetOrList : [targetOrList];
+    const els = raw.filter((el) => {
+      if (!el) return false;
+      const r = el.getBoundingClientRect();
+      return r.width > 0 && r.height > 0;
+    });
+    if (!els.length) return;
+
+    const primary = els[0];
+    const fieldList = $("fieldList");
+    const inspectorBody = getInspectorScroller();
+
+    if (fieldList && fieldList.contains(primary) && fieldList.scrollHeight > fieldList.clientHeight + 2) {
+      scrollContainerToElement(fieldList, primary, align === "top" ? "top" : "center", smooth, Math.min(edgePad, 10));
+    } else if (inspectorBody && inspectorBody.contains(primary) && inspectorBody.scrollHeight > inspectorBody.clientHeight + 2) {
+      scrollContainerToElement(inspectorBody, primary, align === "page-top" ? "top" : align, smooth, edgePad);
+    }
+
+    const docEl = document.documentElement || document.body;
+    const pageMaxScroll = Math.max(0, (docEl ? docEl.scrollHeight : 0) - window.innerHeight);
+    if (pageMaxScroll <= 2) return;
+
+    if (align === "page-top") {
+      window.scrollTo({ top: 0, behavior: smooth ? "smooth" : "auto" });
+      return;
+    }
+
+    let uTop = Infinity;
+    let uBottom = -Infinity;
+    els.forEach((el) => {
+      const r = el.getBoundingClientRect();
+      uTop = Math.min(uTop, r.top);
+      uBottom = Math.max(uBottom, r.bottom);
+    });
+    const uHeight = Math.max(0, uBottom - uTop);
+    const absTop = uTop + window.scrollY;
+    const vh = window.innerHeight;
+    const topSafe = 20;
+    const bottomSafe = 20;
+    const availH = Math.max(120, vh - topSafe - bottomSafe);
+
+    let nextY = null;
+    if (align === "top") {
+      nextY = absTop - topSafe;
+    } else if (align === "center") {
+      if (uHeight >= availH) {
+        nextY = absTop - topSafe;
+      } else if (availH - uHeight < 460 && uHeight + 220 <= availH) {
+        nextY = absTop - 28;
+      } else {
+        nextY = absTop - topSafe - (availH - uHeight) / 2;
+      }
+    } else if (uTop < topSafe || uBottom > vh - bottomSafe) {
+      if (uHeight >= availH || uTop < topSafe) {
+        nextY = absTop - topSafe;
+      } else {
+        nextY = absTop + uHeight - (vh - bottomSafe);
+      }
+    }
+
+    if (nextY !== null) {
+      const clampedY = clamp(Math.round(nextY), 0, pageMaxScroll);
+      if (Math.abs(clampedY - window.scrollY) > 1) {
+        window.scrollTo({ top: clampedY, behavior: smooth ? "smooth" : "auto" });
+      }
+    }
+  }
+
+  function setLabelsVisible(visible) {
+    state.showLabels = Boolean(visible);
+    $("toggleLabelsBtn")?.classList.toggle("is-active", state.showLabels);
+    if (!map || !layerLabels) return;
+    if (state.showLabels) {
+      if (!map.hasLayer(layerLabels)) layerLabels.addTo(map);
+    } else if (map.hasLayer(layerLabels)) {
+      map.removeLayer(layerLabels);
+    }
+  }
+
+  function setZonesVisible(visible) {
+    state.showZones = Boolean(visible);
+    $("toggleZonesBtn")?.classList.toggle("is-active", state.showZones);
+    $("mapZonesLegend")?.classList.toggle("is-hidden", !state.showZones);
+    renderZonesOverlay();
+  }
+
+  function flashTourControl(el) {
+    if (!el) return;
+    el.classList.remove("tour-control-flash");
+    void el.offsetWidth;
+    el.classList.add("tour-control-flash");
+  }
+
+  function getCustomTrigger(selectEl) {
+    return selectEl?.parentElement?.querySelector(".fs-select-trigger") || selectEl;
+  }
+
+  function captureFieldPlans() {
+    const out = {};
+    state.fields.forEach((f) => {
+      out[f.id] = {
+        selectedPlan: f.selectedPlan ? [...f.selectedPlan] : null,
+        useCoverCrop: f.useCoverCrop,
+        coverCropId: f.coverCropId,
+        useNoTill: f.useNoTill
+      };
+    });
+    return out;
+  }
+
+  function restoreTourBackupState(openTab) {
+    if (!tourBackup) return;
+    if (tourBackup.fieldPlans) {
+      state.fields.forEach((f) => {
+        const snap = tourBackup.fieldPlans[f.id];
+        if (!snap) return;
+        f.selectedPlan = snap.selectedPlan ? [...snap.selectedPlan] : null;
+        f.useCoverCrop = snap.useCoverCrop;
+        f.coverCropId = snap.coverCropId;
+        f.useNoTill = snap.useNoTill;
+      });
+    }
+    state.sortBy = tourBackup.sortBy || "default";
+    applyTheme(tourBackup.theme || "light", false, false);
+    setBasemap(tourBackup.basemap);
+    setLabelsVisible(tourBackup.showLabels !== false);
+    setZonesVisible(tourBackup.showZones !== false);
+    if (tourBackup.fieldId) selectField(tourBackup.fieldId, true);
+    state.priorityMode = tourBackup.priorityMode;
+    state.weights = deepClone(tourBackup.weights);
+    state.planSequence = deepClone(tourBackup.planSequence);
+    state.useCoverCrop = tourBackup.useCoverCrop;
+    state.coverCropId = tourBackup.coverCropId || "rye_vetch";
+    state.useNoTill = tourBackup.useNoTill !== false;
+    state.overrides = deepClone(tourBackup.overrides);
+    renderAll();
+    setActiveTab(openTab || tourBackup.tab || "climate");
+    scrollFieldListToActive(false);
+  }
+
+  const TOUR_STEPS = [
+    {
+      target: "#fieldsSidebar",
+      side: "right",
+      scrollAlign: "page-top",
+      titleKey: "tourStep1Title",
+      descKey: "tourStep1Desc",
+      prepare() {
+        closeTourPopupOnly();
+        setWorkspaceView("workspace");
+        toggleSidebar(false);
+        state.sortBy = "default";
+        renderSidebarFields();
+        syncCustomSelects();
+        const firstId = state.fields[0]?.id;
+        if (firstId) selectField(firstId, true);
+        scrollFieldListToActive(false);
+        ensureStepInView([$("fieldsSidebar")], "page-top", false, 14);
+      },
+      demo() {
+        const alt = state.fields.find((f) => f.id === "us_kansas") || state.fields[1];
+        scheduleTour(() => {
+          if (!tourActive) return;
+          state.sortBy = "risk";
+          renderSidebarFields();
+          syncCustomSelects();
+          flashTourControl(getCustomTrigger($("fieldSortSelect")));
+        }, 480);
+        scheduleTour(() => {
+          if (!tourActive || !alt) return;
+          selectField(alt.id, true);
+          scrollFieldListToActive(true);
+          flashTourControl($("fieldList")?.querySelector(".field-card.is-active"));
+        }, 1150);
+        scheduleTour(() => {
+          if (!tourActive) return;
+          state.sortBy = "default";
+          renderSidebarFields();
+          syncCustomSelects();
+          scrollFieldListToActive(true);
+          flashTourControl(getCustomTrigger($("fieldSortSelect")));
+        }, 1950);
+      }
+    },
+    {
+      target: ".floating-map-dock",
+      side: "top",
+      scrollAlign: "center",
+      titleKey: "tourStep2Title",
+      descKey: "tourStep2Desc",
+      prepare() {
+        closeTourPopupOnly();
+        setBasemap("sat");
+        setLabelsVisible(true);
+        setZonesVisible(true);
+        ensureStepInView([document.querySelector(".floating-map-dock")], "center", false, 14);
+      },
+      demo() {
+        scheduleTour(() => {
+          if (!tourActive) return;
+          setBasemap("ter");
+          flashTourControl($("layerTerBtn"));
+        }, 420);
+        scheduleTour(() => {
+          if (!tourActive) return;
+          setLabelsVisible(false);
+          flashTourControl($("toggleLabelsBtn"));
+        }, 960);
+        scheduleTour(() => {
+          if (!tourActive) return;
+          setZonesVisible(false);
+          flashTourControl($("toggleZonesBtn"));
+        }, 1500);
+        scheduleTour(() => {
+          if (!tourActive) return;
+          setBasemap("sat");
+          setLabelsVisible(true);
+          setZonesVisible(true);
+          flashTourControl($("layerSatBtn"));
+          flashTourControl($("toggleLabelsBtn"));
+          flashTourControl($("toggleZonesBtn"));
+        }, 2100);
+      }
+    },
+    {
+      getTargets: () => {
+        const hud = $("mapWeatherHud");
+        if (hud) {
+          const r = hud.getBoundingClientRect();
+          if (r.width > 0 && r.height > 0) return [hud];
+        }
+        return [document.querySelector(".map-stage")];
+      },
+      side: "left",
+      scrollAlign: "center",
+      titleKey: "tourStep3Title",
+      descKey: "tourStep3Desc",
+      prepare() {
+        closeTourPopupOnly();
+        const fId = tourBackup?.fieldId || state.fields[0]?.id;
+        if (fId) selectField(fId, true);
+        scrollFieldListToActive(false);
+        ensureStepInView(getStepTargetElements(this), "center", false, 14);
+      },
+      demo() {
+        scheduleTour(() => {
+          if (!tourActive) return;
+          const field = getActiveField();
+          if (field) {
+            probeMapPoint(field.lat + 0.008, field.lon + 0.012);
+            flashTourControl($("mapWeatherHud"));
+            scheduleTour(() => realignTour(true), 40);
+          }
+        }, 520);
+        scheduleTour(() => {
+          if (!tourActive) return;
+          const field = getActiveField();
+          if (field) {
+            probeMapPoint(field.lat - 0.006, field.lon - 0.011);
+            flashTourControl($("mapWeatherHud"));
+            scheduleTour(() => realignTour(true), 40);
+          }
+        }, 1450);
+      }
+    },
+    {
+      getTargets: () => [$("somSlider")?.closest(".panel-card")],
+      clipContainer: ".inspector-body",
+      side: "left",
+      scrollAlign: "center",
+      titleKey: "tourStep4Title",
+      descKey: "tourStep4Desc",
+      prepare() {
+        closeTourPopupOnly();
+        toggleInspector(false);
+        state.overrides = null;
+        setActiveTab("climate");
+        renderAll();
+        const soilCard = $("somSlider")?.closest(".panel-card");
+        ensureStepInView(soilCard, "center", false, 14);
+      },
+      demo() {
+        const keepVisible = () => {
+          const soilCard = $("somSlider")?.closest(".panel-card");
+          ensureStepInView(soilCard, "nearest", false, 12);
+          scheduleTour(() => realignTour(true), 24);
+        };
+        scheduleTour(() => {
+          if (!tourActive) return;
+          const field = getActiveField();
+          if (!field) return;
+          const eff = getEffectiveSoilAndField(field);
+          const nextSoil = eff.soilTypeId === "sandy_loam" ? "silty_loam" : "sandy_loam";
+          state.overrides = { ...(state.overrides || {}), soilTypeId: nextSoil };
+          renderAll();
+          keepVisible();
+          flashTourControl(getCustomTrigger($("soilTypeSelect")));
+        }, 480);
+        scheduleTour(() => {
+          if (!tourActive) return;
+          const field = getActiveField();
+          if (!field) return;
+          const eff = getEffectiveSoilAndField(field);
+          const nextCrop = eff.prevCrop === "soybean" ? "wheat_winter" : "soybean";
+          state.overrides = { ...(state.overrides || {}), prevCrop: nextCrop, ph: 6.1 };
+          renderAll();
+          keepVisible();
+          flashTourControl(getCustomTrigger($("prevCropSelect")));
+          flashTourControl($("soilPhInput"));
+        }, 1100);
+        scheduleTour(() => {
+          if (!tourActive) return;
+          const field = getActiveField();
+          if (!field) return;
+          const cur = getEffectiveSoilAndField(field).somPct || 3.4;
+          state.overrides = { ...(state.overrides || {}), somPct: Number(clamp(cur + 0.8, 1.8, 6.5).toFixed(1)) };
+          renderAll();
+          keepVisible();
+          flashTourControl($("somSlider"));
+        }, 1750);
+      }
+    },
+    {
+      getTargets: () => [$("priorityModeGroup")?.closest(".panel-card"), document.querySelector("#panelRotation .gantt-card")],
+      clipContainer: ".inspector-body",
+      side: "left",
+      scrollAlign: "top",
+      titleKey: "tourStep5Title",
+      descKey: "tourStep5Desc",
+      prepare() {
+        closeTourPopupOnly();
+        toggleInspector(false);
+        state.overrides = null;
+        state.useCoverCrop = true;
+        state.useNoTill = true;
+        setActiveTab("rotation");
+        applyPriorityMode("water_first", false);
+        const strategyCard = $("priorityModeGroup")?.closest(".panel-card");
+        tourTargetsOverride = strategyCard ? [strategyCard] : null;
+        setInspectorScrollTop(0, false);
+        ensureStepInView(strategyCard || document.querySelector("#panelRotation"), "top", false, 14);
+      },
+      demo() {
+        scheduleTour(() => {
+          if (!tourActive) return;
+          applyPriorityMode("max_profit", false);
+          flashTourControl($("priorityModeGroup")?.querySelector('[data-mode="max_profit"]'));
+          scheduleTour(() => realignTour(true), 24);
+        }, 420);
+        scheduleTour(() => {
+          if (!tourActive) return;
+          state.useCoverCrop = false;
+          renderAll();
+          flashTourControl($("coverCropToggle")?.closest("label"));
+          scheduleTour(() => realignTour(true), 24);
+        }, 920);
+        scheduleTour(() => {
+          if (!tourActive) return;
+          state.useCoverCrop = true;
+          state.useNoTill = false;
+          state.weights.water = clamp((Number(state.weights.water) || 45) + 20, 0, 100);
+          renderAll();
+          flashTourControl($("noTillToggle")?.closest("label"));
+          flashTourControl($("weightWaterSlider"));
+          scheduleTour(() => realignTour(true), 24);
+        }, 1420);
+        scheduleTour(() => {
+          if (!tourActive) return;
+          state.useNoTill = true;
+          applyPriorityMode("soil_builder", false);
+          const ganttCard = document.querySelector("#panelRotation .gantt-card");
+          if (ganttCard) {
+            tourTargetsOverride = [ganttCard];
+            ensureStepInView(ganttCard, "center", true, 14);
+            flashTourControl(ganttCard);
+            realignTour(false);
+            scheduleTour(() => realignTour(true), 420);
+          }
+        }, 1950);
+      }
+    },
+    {
+      getTargets: () => [
+        document.querySelector("#panelImpact .kpi-strip-4"),
+        $("waterChart")?.closest(".panel-card"),
+        $("profitChart")?.closest(".panel-card")
+      ],
+      clipContainer: ".inspector-body",
+      side: "left",
+      scrollAlign: "top",
+      titleKey: "tourStep6Title",
+      descKey: "tourStep6Desc",
+      prepare() {
+        closeTourPopupOnly();
+        toggleInspector(false);
+        state.useCoverCrop = true;
+        state.useNoTill = true;
+        setActiveTab("impact");
+        renderAll();
+        redrawVisibleCharts();
+        const kpiStrip = document.querySelector("#panelImpact .kpi-strip-4");
+        const waterCard = $("waterChart")?.closest(".panel-card");
+        tourTargetsOverride = [kpiStrip, waterCard].filter(Boolean);
+        setInspectorScrollTop(0, false);
+        ensureStepInView(tourTargetsOverride, "top", false, 14);
+      },
+      demo() {
+        scheduleTour(() => {
+          if (!tourActive) return;
+          state.useCoverCrop = false;
+          state.useNoTill = false;
+          renderAll();
+          redrawVisibleCharts();
+          const kpiStrip = document.querySelector("#panelImpact .kpi-strip-4");
+          const waterCard = $("waterChart")?.closest(".panel-card");
+          tourTargetsOverride = [kpiStrip, waterCard].filter(Boolean);
+          ensureStepInView(tourTargetsOverride, "top", false, 14);
+          flashTourControl(waterCard);
+          scheduleTour(() => realignTour(true), 24);
+        }, 580);
+        scheduleTour(() => {
+          if (!tourActive) return;
+          state.useCoverCrop = true;
+          state.useNoTill = true;
+          renderAll();
+          redrawVisibleCharts();
+          const profitCard = $("profitChart")?.closest(".panel-card");
+          if (profitCard) {
+            tourTargetsOverride = [profitCard];
+            ensureStepInView(profitCard, "center", true, 14);
+            flashTourControl(profitCard);
+            realignTour(false);
+            scheduleTour(() => realignTour(true), 420);
+          }
+        }, 1480);
+      }
+    },
+    {
+      getTargets: () => [
+        document.querySelector(".top-nav-pills"),
+        document.querySelector(".cmd-right")
+      ],
+      side: "bottom",
+      scrollAlign: "page-top",
+      titleKey: "tourStep7Title",
+      descKey: "tourStep7Desc",
+      prepare() {
+        closeTourPopupOnly();
+        restoreTourBackupState("climate");
+        setWorkspaceView("workspace");
+        setInspectorScrollTop(0, false);
+        ensureStepInView(getStepTargetElements(this), "page-top", false, 14);
+      },
+      demo() {
+        const baseTheme = tourBackup?.theme || "light";
+        const flipTheme = baseTheme === "dark" ? "light" : "dark";
+        scheduleTour(() => {
+          if (!tourActive) return;
+          applyTheme(flipTheme, false, false);
+          flashTourControl($("themeToggleBtn"));
+        }, 460);
+        scheduleTour(() => {
+          if (!tourActive) return;
+          setWorkspaceView("portfolio");
+          flashTourControl($("railPortfolioBtn"));
+          scheduleTour(() => realignTour(true), 24);
+        }, 1150);
+        scheduleTour(() => {
+          if (!tourActive) return;
+          setWorkspaceView("crops");
+          flashTourControl($("railCropsBtn"));
+          scheduleTour(() => realignTour(true), 24);
+        }, 1780);
+        scheduleTour(() => {
+          if (!tourActive) return;
+          setWorkspaceView("workspace");
+          applyTheme(baseTheme, false, false);
+          flashTourControl($("railMapBtn"));
+          flashTourControl($("themeToggleBtn"));
+          scheduleTour(() => realignTour(true), 24);
+        }, 2380);
+      }
+    }
+  ];
+
+  function getStepTargetElements(step) {
+    if (!step) return [];
+    const list = tourTargetsOverride && tourTargetsOverride.length
+      ? tourTargetsOverride
+      : (typeof step.getTargets === "function" ? step.getTargets() : [document.querySelector(step.target)]);
+    return list.filter((el) => {
+      if (!el) return false;
+      const r = el.getBoundingClientRect();
+      return r.width > 0 && r.height > 0;
+    });
+  }
+
+  function realignTour(instant = true) {
+    if (!tourActive) return;
+    positionTourStep(TOUR_STEPS[tourStepIndex], instant);
+  }
+
+  function positionTourStep(step, instant = false) {
+    if (!tourActive || !step) return;
+    const spotlight = $("tourSpotlight");
+    const popover = $("tourPopover");
+    const targets = getStepTargetElements(step);
+    if (!spotlight || !popover || !targets.length) return;
+
+    const firstEl = targets[0];
+    let left = Infinity;
+    let top = Infinity;
+    let right = -Infinity;
+    let bottom = -Infinity;
+    targets.forEach((el) => {
+      const r = el.getBoundingClientRect();
+      left = Math.min(left, r.left);
+      top = Math.min(top, r.top);
+      right = Math.max(right, r.right);
+      bottom = Math.max(bottom, r.bottom);
+    });
+
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const pad = 5;
+    const edgeSafe = 6;
+
+    let clipLeft = edgeSafe;
+    let clipTop = edgeSafe;
+    let clipRight = vw - edgeSafe;
+    let clipBottom = vh - edgeSafe;
+
+    if (step.clipContainer) {
+      const clipEl = document.querySelector(step.clipContainer);
+      if (clipEl) {
+        const cr = clipEl.getBoundingClientRect();
+        if (cr.width > 0 && cr.height > 0) {
+          clipLeft = Math.max(clipLeft, cr.left + 4);
+          clipTop = Math.max(clipTop, cr.top + 4);
+          clipRight = Math.min(clipRight, cr.right - 4);
+          clipBottom = Math.min(clipBottom, cr.bottom - 5);
+        }
+      }
+    }
+
+    const sLeft = clamp(left - pad, clipLeft, Math.max(clipLeft, clipRight - 48));
+    const sTop = clamp(top - pad, clipTop, Math.max(clipTop, clipBottom - 48));
+    const sRight = clamp(right + pad, sLeft + 48, Math.max(sLeft + 48, clipRight));
+    const sBottom = clamp(bottom + pad, sTop + 48, Math.max(sTop + 48, clipBottom));
+
+    const leftPx = Math.round(sLeft);
+    const topPx = Math.round(sTop);
+    const rightPx = Math.round(sRight);
+    const bottomPx = Math.round(sBottom);
+    const sW = Math.max(48, rightPx - leftPx);
+    const sH = Math.max(48, bottomPx - topPx);
+
+    spotlight.classList.toggle("is-instant", Boolean(instant));
+    spotlight.style.top = `${topPx}px`;
+    spotlight.style.left = `${leftPx}px`;
+    spotlight.style.width = `${sW}px`;
+    spotlight.style.height = `${sH}px`;
+
+    const popRect = popover.getBoundingClientRect();
+    const popW = popRect.width || Math.min(352, vw - 24);
+    const popH = popRect.height || 210;
+    const gap = 14;
+
+    let pLeft = 16;
+    let pTop = 72;
+
+    if (step.side === "right" && rightPx + gap + popW <= vw - 10) {
+      pLeft = rightPx + gap;
+      pTop = clamp(topPx + 20, 68, vh - popH - 12);
+    } else if (step.side === "left") {
+      const drawer = $("inspectorDrawer");
+      const inInspector = drawer && !$("appShell")?.classList.contains("inspector-collapsed") && drawer.contains(firstEl);
+      const anchorLeft = inInspector && vw > 1024 ? Math.min(leftPx, Math.round(drawer.getBoundingClientRect().left)) : leftPx;
+      if (anchorLeft - gap - popW >= 10) {
+        pLeft = anchorLeft - gap - popW;
+        const centeredTop = topPx + Math.min(36, Math.max(0, Math.round((sH - popH) / 2)));
+        pTop = topPx > 120 ? clamp(centeredTop, 68, vh - popH - 12) : clamp(Math.round((vh - popH) * 0.42), 68, vh - popH - 12);
+      } else if (bottomPx + gap + popH <= vh - 10) {
+        pTop = bottomPx + gap;
+        pLeft = clamp(rightPx - popW, 12, vw - popW - 12);
+      } else if (topPx - gap - popH >= 12) {
+        pTop = topPx - gap - popH;
+        pLeft = clamp(rightPx - popW, 12, vw - popW - 12);
+      } else {
+        pLeft = clamp(vw / 2 - popW / 2, 12, vw - popW - 12);
+        pTop = topPx > vh - bottomPx ? 12 : clamp(vh - popH - 16, 12, vh - popH - 12);
+      }
+    } else if (step.side === "top" && topPx - gap - popH >= 56) {
+      pTop = topPx - gap - popH;
+      pLeft = clamp(leftPx + sW / 2 - popW / 2, 12, vw - popW - 12);
+    } else if (bottomPx + gap + popH <= vh - 10) {
+      pTop = bottomPx + gap;
+      pLeft = clamp(rightPx - popW, 12, vw - popW - 12);
+    } else if (topPx - gap - popH >= 12) {
+      pTop = topPx - gap - popH;
+      pLeft = clamp(leftPx, 12, vw - popW - 12);
+    } else {
+      pLeft = clamp(vw / 2 - popW / 2, 12, vw - popW - 12);
+      pTop = topPx > vh - bottomPx ? 12 : clamp(vh - popH - 16, 12, vh - popH - 12);
+    }
+
+    popover.style.left = `${Math.round(pLeft)}px`;
+    popover.style.top = `${Math.round(pTop)}px`;
+  }
+
+  function renderTourTextOnly() {
+    if (!tourActive) return;
+    const step = TOUR_STEPS[tourStepIndex];
+    if (!step) return;
+    const isLast = tourStepIndex === TOUR_STEPS.length - 1;
+    $("tourStepBadge").textContent = `${tourStepIndex + 1} / ${TOUR_STEPS.length}`;
+    $("tourTitle").textContent = t(step.titleKey);
+    $("tourDesc").textContent = t(step.descKey);
+    $("tourPrevBtn").disabled = tourStepIndex === 0;
+    $("tourNextLabel").textContent = isLast ? t("tourFinish") : t("tourNext");
+    $("tourDots").innerHTML = TOUR_STEPS.map((_, idx) => `<span class="tour-dot${idx === tourStepIndex ? " is-active" : ""}"></span>`).join("");
+  }
+
+  function refreshTourLanguage() {
+    renderTourTextOnly();
+    if (tourActive) {
+      requestAnimationFrame(() => realignTour(true));
+    }
+  }
+
+  function goToTourStep(idx) {
+    clearTourTimers();
+    tourTargetsOverride = null;
+    tourStepIndex = clamp(idx, 0, TOUR_STEPS.length - 1);
+    tourTransitionUntil = performance.now() + 340;
+    const step = TOUR_STEPS[tourStepIndex];
+    if (tourBackup && tourStepIndex < TOUR_STEPS.length - 1) {
+      applyTheme(tourBackup.theme || "light", false, false);
+      setWorkspaceView("workspace");
+      setLabelsVisible(tourBackup.showLabels !== false);
+      setZonesVisible(tourBackup.showZones !== false);
+      toggleSidebar(false);
+      toggleInspector(false);
+    }
+    if (step.prepare) step.prepare();
+    renderTourTextOnly();
+    $("tourOverlay").classList.remove("is-hidden");
+    requestAnimationFrame(() => {
+      ensureStepInView(getStepTargetElements(step), step.scrollAlign || "center", false, 14);
+      positionTourStep(step, false);
+    });
+    scheduleTour(() => {
+      realignTour(false);
+    }, 200);
+    scheduleTour(() => {
+      realignTour(true);
+    }, 360);
+    if (step.demo) step.demo();
+  }
+
+  function replayTourDemo() {
+    if (!tourActive) return;
+    goToTourStep(tourStepIndex);
+  }
+
+  function startTour() {
+    closeCustomSelect();
+    $("tourWelcomeBackdrop")?.classList.add("is-hidden");
+    try {
+      localStorage.setItem(TOUR_STORAGE_KEY, "1");
+    } catch (_e) {}
+
+    const shell = $("appShell");
+    const hadCollapsed = shell.classList.contains("sidebar-collapsed") || shell.classList.contains("inspector-collapsed");
+    if (!tourActive) {
+      tourBackup = {
+        fieldId: state.activeFieldId,
+        sortBy: state.sortBy,
+        view: state.activeView,
+        tab: state.activeTab,
+        theme: state.theme,
+        basemap: state.basemap,
+        showLabels: state.showLabels,
+        showZones: state.showZones,
+        priorityMode: state.priorityMode,
+        weights: deepClone(state.weights),
+        planSequence: deepClone(state.planSequence),
+        useCoverCrop: state.useCoverCrop,
+        coverCropId: state.coverCropId,
+        useNoTill: state.useNoTill,
+        overrides: deepClone(state.overrides),
+        fieldPlans: captureFieldPlans(),
+        sidebarCollapsed: shell.classList.contains("sidebar-collapsed"),
+        inspectorCollapsed: shell.classList.contains("inspector-collapsed"),
+        inspectorScroll: getInspectorScroller()?.scrollTop || 0,
+        windowScroll: window.scrollY || 0
+      };
+    }
+
+    tourActive = true;
+    shell.classList.add("tour-active");
+    setWorkspaceView("workspace");
+    toggleSidebar(false);
+    toggleInspector(false);
+    scheduleTour(() => {
+      if (!tourActive) return;
+      if (map) map.invalidateSize();
+      goToTourStep(0);
+    }, hadCollapsed ? 250 : 80);
+  }
+
+  function closeTour() {
+    clearTourTimers();
+    tourTargetsOverride = null;
+    closeTourPopupOnly();
+    tourActive = false;
+    $("appShell")?.classList.remove("tour-active");
+    $("tourSpotlight")?.classList.remove("is-instant");
+    $("tourOverlay")?.classList.add("is-hidden");
+    $("tourWelcomeBackdrop")?.classList.add("is-hidden");
+    try {
+      localStorage.setItem(TOUR_STORAGE_KEY, "1");
+    } catch (_e) {}
+
+    if (tourBackup) {
+      const saved = tourBackup;
+      restoreTourBackupState(saved.tab || "climate");
+      setWorkspaceView(saved.view || "workspace");
+      toggleSidebar(saved.sidebarCollapsed);
+      toggleInspector(saved.inspectorCollapsed);
+      setInspectorScrollTop(saved.inspectorScroll || 0, false);
+      window.scrollTo({ top: saved.windowScroll || 0, behavior: "auto" });
+      tourBackup = null;
+    }
+  }
+
+  function openTourWelcome() {
+    try {
+      localStorage.setItem(TOUR_STORAGE_KEY, "1");
+    } catch (_e) {}
+    $("tourWelcomeBackdrop")?.classList.remove("is-hidden");
+  }
+
+  function initTour() {
+    $("tourWelcomeStartBtn")?.addEventListener("click", startTour);
+    $("tourWelcomeSkipBtn")?.addEventListener("click", closeTour);
+    $("tourWelcomeBackdrop")?.addEventListener("click", (ev) => {
+      if (ev.target === $("tourWelcomeBackdrop")) closeTour();
+    });
+    $("tourCloseBtn")?.addEventListener("click", closeTour);
+    $("tourPrevBtn")?.addEventListener("click", () => goToTourStep(tourStepIndex - 1));
+    $("tourNextBtn")?.addEventListener("click", () => {
+      if (tourStepIndex >= TOUR_STEPS.length - 1) closeTour();
+      else goToTourStep(tourStepIndex + 1);
+    });
+    $("tourReplayBtn")?.addEventListener("click", replayTourDemo);
+
+    document.addEventListener("keydown", (ev) => {
+      if (!$("tourWelcomeBackdrop")?.classList.contains("is-hidden") && ev.key === "Escape") {
+        closeTour();
+        return;
+      }
+      if (!tourActive) return;
+      if (ev.key === "Escape") closeTour();
+      else if (ev.key === "ArrowRight") {
+        ev.preventDefault();
+        if (tourStepIndex >= TOUR_STEPS.length - 1) closeTour();
+        else goToTourStep(tourStepIndex + 1);
+      } else if (ev.key === "ArrowLeft" && tourStepIndex > 0) {
+        ev.preventDefault();
+        goToTourStep(tourStepIndex - 1);
+      }
+    });
+
+    let tourScrollRaf = 0;
+    document.addEventListener("scroll", (ev) => {
+      if (!tourActive || tourScrollRaf || performance.now() < tourTransitionUntil) return;
+      const targets = getStepTargetElements(TOUR_STEPS[tourStepIndex]);
+      const src = ev.target;
+      const isPageScroll = src === document || src === document.documentElement || src === document.body;
+      if (!isPageScroll && (!(src instanceof Element) || !targets.some((el) => src === el || src.contains(el)))) return;
+      tourScrollRaf = requestAnimationFrame(() => {
+        tourScrollRaf = 0;
+        realignTour(true);
+      });
+    }, { capture: true, passive: true });
+
+    window.addEventListener("resize", () => {
+      realignTour(true);
+    });
+
+    let done = false;
+    try {
+      done = localStorage.getItem(TOUR_STORAGE_KEY) === "1";
+    } catch (_e) {}
+    const forceWelcome = window.location.search.includes("welcome=1");
+    if (!done || forceWelcome) {
+      setTimeout(() => {
+        if (!tourActive) openTourWelcome();
+      }, 480);
+    }
+  }
+
   function init() {
+    applyTheme(state.theme, false);
+    initCustomSelects();
     applyStaticTranslations();
     populateStaticSelects();
     loadStoredFields();
     initMap();
     bindEvents();
     selectField(state.activeFieldId, true);
+    initTour();
   }
 
   document.addEventListener("DOMContentLoaded", init);

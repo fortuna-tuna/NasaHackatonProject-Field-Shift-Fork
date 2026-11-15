@@ -3,12 +3,16 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#DCEFFB">
   <title>Field Shift — NASA Agronomic GIS &amp; Crop Rotation Workspace</title>
+  <link rel="icon" type="image/svg+xml" href="logo.svg?v=20261115h">
+  <link rel="shortcut icon" href="logo.svg?v=20261115h">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="styles.css?v=20261115h">
+  <script>try{if(localStorage.getItem("field_shift_theme")==="dark")document.documentElement.dataset.theme="dark";}catch(_e){}</script>
 </head>
 <body>
   <div id="appShell" class="app-shell">
@@ -27,20 +31,15 @@
 
     <header class="top-command-bar">
       <div class="cmd-left">
-        <div class="brand-lockup" aria-label="Field Shift — NASA Agronomy GIS">
+        <button type="button" id="railWorkspaceBtn" class="brand-lockup" title="Field Shift — Toggle Parcels Panel">
           <span class="brand-emblem">
-            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" aria-hidden="true">
-              <path d="M4 7.5C8 5.5 13 5.5 17 7.5" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round"/>
-              <path d="M4 12.5C8.5 10.5 14 10.5 20 12.5" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round"/>
-              <path d="M4 17.5C9 15.5 14.5 15.5 20 17.5" stroke="#4ADE80" stroke-width="2" stroke-linecap="round"/>
-              <circle cx="19" cy="6.5" r="2.2" fill="#4ADE80"/>
-            </svg>
+            <img src="logo.svg" alt="Field Shift logo" class="brand-logo-img" width="32" height="32">
           </span>
           <span class="brand-text-col">
             <strong class="brand-name">Field Shift</strong>
             <span class="brand-tag">NASA Agronomy GIS</span>
           </span>
-        </div>
+        </button>
 
         <div class="cmd-sep"></div>
 
@@ -79,11 +78,19 @@
           <span data-i18n="btnGeoJson">GeoJSON</span>
         </button>
         <input type="file" id="geoImportInput" accept=".geojson,.json,application/geo+json,application/json" class="is-hidden">
-        <button type="button" id="railPrintBtn" class="btn-outline-sm" title="Print 1-Page A4 Action Plan">
+        <button type="button" id="railPrintBtn" class="btn-outline-sm" title="Print Farm Portfolio A4 Summary" data-i18n-title="btnPrintTitle">
           <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><path d="M6 9V3a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v6"/><rect x="6" y="14" width="12" height="8" rx="1"/></svg>
-          <span data-i18n="btnPrint">Print</span>
+          <span data-i18n="btnPrint">Farm A4</span>
+        </button>
+        <button type="button" id="tourRestartBtn" class="btn-outline-sm" title="Start interactive interface walkthrough" data-i18n-title="btnTourTitle">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          <span data-i18n="btnTour">Tour</span>
         </button>
         <div class="cmd-sep"></div>
+        <button type="button" id="themeToggleBtn" class="theme-toggle-btn" title="Switch to Dark Theme" aria-label="Toggle color theme" aria-pressed="false">
+          <svg class="theme-icon-moon" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+          <svg class="theme-icon-sun" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+        </button>
         <div class="lang-switcher" role="group" aria-label="Language selection">
           <button type="button" id="langBtnEn" class="lang-btn is-active" data-lang="en" title="English">EN</button>
           <button type="button" id="langBtnUa" class="lang-btn" data-lang="ua" title="Українська">UA</button>
@@ -155,7 +162,7 @@
             <button type="button" id="layerTerBtn" class="dock-seg-btn" data-i18n="layerTer">Terrain</button>
           </div>
           <div class="dock-sep"></div>
-          <button type="button" id="toggleLabelsBtn" class="dock-chip-btn is-active" data-i18n-title="toggleLabelsTitle" data-i18n="toggleLabels">Labels</button>
+          <button type="button" id="toggleLabelsBtn" class="dock-chip-btn is-active" title="Toggle town &amp; road labels" data-i18n-title="toggleLabelsTitle" data-i18n="toggleLabels">Labels</button>
           <button type="button" id="toggleZonesBtn" class="dock-chip-btn is-active" title="Toggle NASA regional soil moisture &amp; drought markers" data-i18n="toggleZones">NASA Zones</button>
           <button type="button" id="toggleAllFieldsBtn" class="dock-chip-btn" title="Zoom to view all global fields" data-i18n="toggleAllFields">All Parcels</button>
         </div>
@@ -207,17 +214,20 @@
             <p id="inspectorFieldMeta" class="inspector-field-meta">132.4 ha &middot; Cherkasy Oblast, Ukraine &middot; Chernozem</p>
             <div class="inspector-header-actions">
               <button type="button" id="redrawPolygonBtn" class="btn-outline-xs" title="Edit or redraw this parcel's boundary on map" aria-label="Redraw boundary">
-                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.375 2.625a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4Z"/></svg>
+                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.375 2.625a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4Z"/></svg>
                 <span data-i18n="redrawBoundary">Redraw</span>
               </button>
-              <button type="button" id="syncTelemetryBtn" class="icon-btn" title="Refresh live NASA POWER, Open-Meteo &amp; SoilGrids" aria-label="Refresh satellite sync">
-                <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 16h5v5"/></svg>
+              <button type="button" id="syncTelemetryBtn" class="btn-outline-xs" title="Refresh live NASA POWER, Open-Meteo &amp; SoilGrids" data-i18n-title="btnSyncFieldTitle" aria-label="Refresh satellite sync">
+                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 16h5v5"/></svg>
+                <span data-i18n="btnSyncField">Sync</span>
               </button>
-              <button type="button" id="exportPlanBtn" class="icon-btn" title="Export field rotation JSON" aria-label="Export JSON">
-                <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              <button type="button" id="exportPlanBtn" class="btn-outline-xs" title="Export this parcel rotation JSON" data-i18n-title="btnExportFieldTitle" aria-label="Export JSON">
+                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                <span data-i18n="btnExportField">JSON</span>
               </button>
-              <button type="button" id="printPlanBtn" class="icon-btn" title="Print 1-Page Field Report" aria-label="Print report">
-                <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><path d="M6 9V3a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v6"/><rect x="6" y="14" width="12" height="8" rx="1"/></svg>
+              <button type="button" id="printPlanBtn" class="btn-outline-xs" title="Print 1-page A4 report for this field" data-i18n-title="btnFieldPrintTitle" aria-label="Print field report">
+                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><path d="M6 9V3a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v6"/><rect x="6" y="14" width="12" height="8" rx="1"/></svg>
+                <span data-i18n="btnFieldPrint">Field Print</span>
               </button>
             </div>
           </div>
@@ -379,52 +389,65 @@
             </div>
 
             <div class="panel-card gantt-card">
-              <div class="card-head-row">
+              <div class="card-head-row gantt-card-head">
                 <div>
                   <h3 class="card-title" data-i18n="timelineHeading">48-Month Sowing &amp; Harvest Timeline</h3>
                   <p class="card-sub" data-i18n="timelineSub">2027–2030 crop sequence, winter bridges &amp; return intervals</p>
+                </div>
+                <div class="gantt-legend" aria-label="Crop category legend">
+                  <span class="gantt-leg-item"><i class="gantt-leg-dot cat-cereal"></i><span data-i18n="legendCereal">Cereal</span></span>
+                  <span class="gantt-leg-item"><i class="gantt-leg-dot cat-legume"></i><span data-i18n="legendLegume">Legume (+N)</span></span>
+                  <span class="gantt-leg-item"><i class="gantt-leg-dot cat-oilseed"></i><span data-i18n="legendOilseed">Oilseed</span></span>
+                  <span class="gantt-leg-item"><i class="gantt-leg-dot cat-cover"></i><span data-i18n="legendCover">Cover Bridge</span></span>
                 </div>
               </div>
 
               <div id="rotationGantt" class="gantt-wrapper">
                 <div class="gantt-header-row">
-                  <div class="gantt-col-crop" data-i18n="colSeasonCrop">Season &amp; Crop</div>
                   <div id="ganttMonthsHead" class="gantt-months-head">
                     <span>J</span><span>F</span><span>M</span><span>A</span><span>M</span><span>J</span><span>J</span><span>A</span><span>S</span><span>O</span><span>N</span><span>D</span>
                   </div>
                 </div>
 
                 <div class="gantt-row">
-                  <div class="gantt-crop-ctrl">
-                    <span class="gantt-yr-tag">2027</span>
-                    <select id="year1Select" class="gantt-select" aria-label="2027 Crop"></select>
+                  <div class="gantt-row-top">
+                    <div class="gantt-crop-ctrl">
+                      <span class="gantt-yr-tag">2027</span>
+                      <select id="year1Select" class="gantt-select" aria-label="2027 Crop"></select>
+                    </div>
                     <div id="ganttMeta1" class="gantt-yr-meta"></div>
                   </div>
                   <div id="ganttTrack1" class="gantt-track"></div>
                 </div>
 
                 <div class="gantt-row">
-                  <div class="gantt-crop-ctrl">
-                    <span class="gantt-yr-tag">2028</span>
-                    <select id="year2Select" class="gantt-select" aria-label="2028 Crop"></select>
+                  <div class="gantt-row-top">
+                    <div class="gantt-crop-ctrl">
+                      <span class="gantt-yr-tag">2028</span>
+                      <select id="year2Select" class="gantt-select" aria-label="2028 Crop"></select>
+                    </div>
                     <div id="ganttMeta2" class="gantt-yr-meta"></div>
                   </div>
                   <div id="ganttTrack2" class="gantt-track"></div>
                 </div>
 
                 <div class="gantt-row">
-                  <div class="gantt-crop-ctrl">
-                    <span class="gantt-yr-tag">2029</span>
-                    <select id="year3Select" class="gantt-select" aria-label="2029 Crop"></select>
+                  <div class="gantt-row-top">
+                    <div class="gantt-crop-ctrl">
+                      <span class="gantt-yr-tag">2029</span>
+                      <select id="year3Select" class="gantt-select" aria-label="2029 Crop"></select>
+                    </div>
                     <div id="ganttMeta3" class="gantt-yr-meta"></div>
                   </div>
                   <div id="ganttTrack3" class="gantt-track"></div>
                 </div>
 
                 <div class="gantt-row">
-                  <div class="gantt-crop-ctrl">
-                    <span class="gantt-yr-tag">2030</span>
-                    <select id="year4Select" class="gantt-select" aria-label="2030 Crop"></select>
+                  <div class="gantt-row-top">
+                    <div class="gantt-crop-ctrl">
+                      <span class="gantt-yr-tag">2030</span>
+                      <select id="year4Select" class="gantt-select" aria-label="2030 Crop"></select>
+                    </div>
                     <div id="ganttMeta4" class="gantt-yr-meta"></div>
                   </div>
                   <div id="ganttTrack4" class="gantt-track"></div>
@@ -675,11 +698,59 @@
     </div>
   </div>
 
+  <div id="tourWelcomeBackdrop" class="modal-backdrop tour-welcome-backdrop is-hidden" role="dialog" aria-modal="true" aria-labelledby="tourWelcomeTitle">
+    <div class="modal-card modal-sm tour-welcome-card">
+      <div class="tour-welcome-head">
+        <img src="logo.svg" alt="Field Shift logo" class="tour-welcome-logo" width="42" height="42">
+        <div>
+          <span class="tour-eyebrow" data-i18n="tourWelcomeEyebrow">Quick Interface Guide</span>
+          <h2 id="tourWelcomeTitle" class="modal-title" data-i18n="tourWelcomeTitle">Welcome to Field Shift</h2>
+        </div>
+      </div>
+      <p class="tour-welcome-desc" data-i18n="tourWelcomeDesc">Take a 30-second interactive tour to see how satellite telemetry, map layers, and 4-year crop rotations react live.</p>
+      <div class="modal-actions-end">
+        <button type="button" id="tourWelcomeSkipBtn" class="btn-outline-sm" data-i18n="tourWelcomeSkip">Skip</button>
+        <button type="button" id="tourWelcomeStartBtn" class="btn-primary-sm">
+          <span data-i18n="tourWelcomeStart">Start Tour</span>
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div id="tourOverlay" class="tour-overlay is-hidden" aria-live="polite">
+    <div id="tourSpotlight" class="tour-spotlight"></div>
+    <div id="tourPopover" class="tour-popover" role="dialog" aria-modal="true" aria-labelledby="tourTitle">
+      <div class="tour-pop-top">
+        <span id="tourStepBadge" class="tour-step-badge">1 / 7</span>
+        <button type="button" id="tourCloseBtn" class="icon-btn-sm" aria-label="Close tour">&times;</button>
+      </div>
+      <h3 id="tourTitle" class="tour-pop-title">1. Parcels &amp; Global Search</h3>
+      <p id="tourDesc" class="tour-pop-desc"></p>
+      <div class="tour-pop-foot">
+        <div id="tourDots" class="tour-dots"></div>
+        <div class="tour-nav-btns">
+          <button type="button" id="tourReplayBtn" class="tour-replay-btn" title="Replay live switch">
+            <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>
+          </button>
+          <button type="button" id="tourPrevBtn" class="btn-outline-xs" aria-label="Previous step">
+            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"/></svg>
+            <span data-i18n="tourPrev">Back</span>
+          </button>
+          <button type="button" id="tourNextBtn" class="btn-primary-sm tour-next-btn" aria-label="Next step">
+            <span id="tourNextLabel" data-i18n="tourNext">Next</span>
+            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"/></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div id="printSheet" class="print-sheet" aria-hidden="true"></div>
   <div id="appToast" class="app-toast is-hidden" role="status" aria-live="polite"></div>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
-  <script src="data.js"></script>
-  <script src="app.js"></script>
+  <script src="data.js?v=20261115h"></script>
+  <script src="app.js?v=20261115h"></script>
 </body>
 </html>
