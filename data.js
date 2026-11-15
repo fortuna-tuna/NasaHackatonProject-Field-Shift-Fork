@@ -1009,7 +1009,8 @@ window.FIELD_SHIFT_DATA = {
       legendOilseed: "Oilseed",
       legendCover: "Cover Bridge",
       themeToDarkTitle: "Switch to Dark Theme",
-      themeToLightTitle: "Switch to Light Theme"
+      themeToLightTitle: "Switch to Light Theme",
+      githubRepoTitle: "Project repository on GitHub"
     },
     ua: {
       navMap: "Робоча карта",
@@ -1195,7 +1196,8 @@ window.FIELD_SHIFT_DATA = {
       legendOilseed: "Олійні",
       legendCover: "Покрив",
       themeToDarkTitle: "Увімкнути темну тему",
-      themeToLightTitle: "Увімкнути світлу тему"
+      themeToLightTitle: "Увімкнути світлу тему",
+      githubRepoTitle: "Репозиторій проєкту на GitHub"
     },
     crops: {
       winter_wheat: {

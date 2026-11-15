@@ -2798,24 +2798,35 @@ input[type="range"]::-moz-range-track {
   padding-left: 8px;
 }
 
-.theme-toggle-btn {
+.theme-toggle-btn,
+.github-link-btn {
   width: 30px;
   height: 30px;
   border-radius: var(--radius-md);
   border: 1px solid var(--border-strong);
   background: rgba(255, 255, 255, 0.72);
-  backdrop-filter: blur(8px);
   color: var(--ink-secondary);
   display: inline-flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  text-decoration: none;
+  transition: background-color 140ms var(--ease-ui), border-color 140ms var(--ease-ui), color 140ms var(--ease-ui), transform 110ms var(--ease-ui);
 }
 
-.theme-toggle-btn:hover {
+.github-link-btn {
+  color: var(--ink-muted);
+}
+
+.theme-toggle-btn:hover,
+.github-link-btn:hover {
   background: rgba(255, 255, 255, 0.96);
   border-color: var(--accent);
   color: var(--accent);
+}
+
+.github-link-btn:active {
+  transform: scale(0.97);
 }
 
 html[data-theme="dark"] .theme-icon-moon,
@@ -2888,6 +2899,7 @@ html[data-theme="dark"] .lang-btn.is-active {
 html[data-theme="dark"] .btn-outline-sm,
 html[data-theme="dark"] .btn-outline-xs,
 html[data-theme="dark"] .theme-toggle-btn,
+html[data-theme="dark"] .github-link-btn,
 html[data-theme="dark"] .edge-expand-tab,
 html[data-theme="dark"] .tour-replay-btn {
   background: rgba(20, 31, 53, 0.78);
@@ -2895,9 +2907,14 @@ html[data-theme="dark"] .tour-replay-btn {
   border-color: rgba(126, 168, 220, 0.28);
 }
 
+html[data-theme="dark"] .github-link-btn {
+  color: var(--ink-muted);
+}
+
 html[data-theme="dark"] .btn-outline-sm:hover:not(:disabled),
 html[data-theme="dark"] .btn-outline-xs:hover:not(:disabled),
 html[data-theme="dark"] .theme-toggle-btn:hover,
+html[data-theme="dark"] .github-link-btn:hover,
 html[data-theme="dark"] .edge-expand-tab:hover,
 html[data-theme="dark"] .tour-replay-btn:hover {
   background: rgba(30, 48, 80, 0.94);
