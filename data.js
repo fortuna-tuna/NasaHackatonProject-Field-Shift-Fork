@@ -2,47 +2,47 @@ window.FIELD_SHIFT_DATA = {
   nasaSources: [
     {
       id: "SMAP_L4",
-      code: "NASA SMAP L4",
-      title: "Root-Zone & Surface Soil Moisture",
-      title_ua: "Вологість кореневмісного та поверхневого шарів ґрунту",
-      resolution: "9 km · Daily Assimilation",
-      resolution_ua: "9 км · Щоденна асиміляція",
+      code: "NASA POWER (GEOS/MERRA-2)",
+      title: "Root-Zone & Deep Profile Soil Wetness",
+      title_ua: "Вологість кореневмісного та глибокого шарів ґрунту",
+      resolution: "0.5° × 0.625° · Daily REST (~4d lag)",
+      resolution_ua: "0.5° × 0.625° · Щоденне оновлення (~4 дні)",
       parameter: "GWETROOT / GWETPROF",
-      role: "Measures plant-available moisture at 0–100 cm and 100–200 cm so multi-year rotations do not stack deep subsoil extractors consecutively.",
-      role_ua: "Вимірює доступну рослинам вологу на глибинах 0–100 см та 100–200 см, запобігаючи виснаженню глибоких горизонтів."
+      role: "Pulls trailing 14-day NASA GEOS root-zone and profile wetness directly to evaluate subsoil moisture reserves before multi-year crop selection.",
+      role_ua: "Отримує актуальну 14-денну вологість кореневого та глибокого профілю NASA GEOS для оцінки запасів вологи перед підбором культур."
     },
     {
       id: "NASA_POWER",
-      code: "NASA POWER AG",
-      title: "Agroclimatology Solar & Thermal Archive",
-      title_ua: "Агрокліматичний архів сонячної та теплової радіації",
-      resolution: "0.5° × 0.625° · Live REST API",
-      resolution_ua: "0.5° × 0.625° · Live REST API",
-      parameter: "T2M_MAX / PRECTOTCORR / GWETROOT",
-      role: "Provides coordinate-specific precipitation totals, flowering heat-stress thresholds, and root moisture baselines for any parcel worldwide.",
-      role_ua: "Надає точні координатні суми опадів, пороги теплового стресу цвітіння та базові лінії вологості для будь-якої ділянки світу."
+      code: "NASA POWER AG (1991–Present)",
+      title: "Warming Anomaly, Heat Stress & Rainfall",
+      title_ua: "Теплова аномалія, дні спеки та ряди опадів",
+      resolution: "Monthly (1991–2025) + Daily 365d · Live CORS API",
+      resolution_ua: "Місячні (1991–2025) + щоденні 365д · Live API",
+      parameter: "T2M / T2M_MAX / PRECTOTCORR",
+      role: "Computes real 5-year warming anomalies against 1991–2020 normals, exact trailing 365-day >=30°C heat-stress counts, and 10-year precipitation baselines.",
+      role_ua: "Обчислює реальну 5-річну температурну аномалію проти норми 1991–2020 рр., точну кількість днів >=30°C за 365 днів та 10-річні норми опадів."
     },
     {
       id: "OPEN_METEO_SOIL",
       code: "Open-Meteo Agro & SoilGrids",
       title: "Live 7-Day Field Weather & ISRIC Soil",
       title_ua: "Прогноз погоди на 7 днів та ґрунти ISRIC",
-      resolution: "250 m Soil · Hourly Forecast",
-      resolution_ua: "250 м ґрунт · Погодинний прогноз",
-      parameter: "soil_moisture_27_to_81cm / clay / sand / soc",
-      role: "Supplies real-time topsoil temperature, sowing-window rainfall, FAO ET0, and ISRIC SoilGrids v2.0 clay, sand, pH, and organic carbon.",
-      role_ua: "Забезпечує дані температури орного шару в реальному часі, опади вікон сівби, FAO ET0 та показники глини, піску, pH і гумусу з ISRIC SoilGrids v2.0."
+      resolution: "250 m Soil · Live Hourly/Daily Forecast",
+      resolution_ua: "250 м ґрунт · Живий 7-денний прогноз",
+      parameter: "soil_moisture_0_to_81cm / clay / sand / pH / soc",
+      role: "Supplies live topsoil moisture across 3 depths, sowing-window rainfall, wind speed, and ISRIC SoilGrids v2.0 clay, sand, pH, and organic carbon.",
+      role_ua: "Забезпечує поточну вологість ґрунту на 3 глибинах, опади на 7 днів, вітер та дані глини, піску, pH і гумусу з ISRIC SoilGrids v2.0."
     },
     {
       id: "GPM_ECOSTRESS",
-      code: "GPM IMERG & ECOSTRESS",
-      title: "Rainfall Shifts & Evapotranspiration Gap",
-      title_ua: "Зсуви опадів та дефіцит евапотранспірації",
-      resolution: "70 m – 10 km · Multi-Sensor",
-      resolution_ua: "70 м – 10 км · Мультисенсор",
-      parameter: "PRECTOT vs. EVPTRNS / LST",
-      role: "Quantifies monthly rain-minus-ET deficits across growing seasons to align crop sowing and harvest calendars with true moisture windows.",
-      role_ua: "Кількісно оцінює щомісячний дефіцит «опади мінус ET» протягом сезону для узгодження календаря сівби та збирання з вікнами вологи."
+      code: "NASA Radiation (FAO-56 ET)",
+      title: "Evaporative Demand & Moisture Balance",
+      title_ua: "Потреба у випаровуванні (ET) та водний баланс",
+      resolution: "Physical Model · Solar, RH & Wind",
+      resolution_ua: "Фізична модель · Радіація, RH і вітер",
+      parameter: "PRECTOTCORR vs. ALLSKY_SFC_SW_DWN / RH2M / WS2M",
+      role: "Calculates monthly crop atmospheric ET demand via FAO-56 Penman-Monteith directly from NASA POWER irradiance, air temperature, humidity, and wind.",
+      role_ua: "Розраховує щомісячну потребу культур у випаровуванні (ET) за формулою FAO-56 на базі сонячної радіації, температури, вологості та вітру NASA POWER."
     }
   ],
 

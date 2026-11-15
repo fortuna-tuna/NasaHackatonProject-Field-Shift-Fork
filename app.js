@@ -67,6 +67,7 @@
     liveSoilGrids: null,
     livePowerStats: null,
     nasaCache: new Map(),
+    powerCache: new Map(),
     toastTimer: null
   };
 
@@ -478,70 +479,236 @@
     return { soilTypeId, soil, somPct, ph, prevCrop, areaHa };
   }
 
-  function buildDynamicBaseline(lat, lon, powerData, soilGridsData) {
+  function formatPowerYmd(dateObj) {
+    const y = dateObj.getUTCFullYear();
+    const m = String(dateObj.getUTCMonth() + 1).padStart(2, "0");
+    const d = String(dateObj.getUTCDate()).padStart(2, "0");
+    return `${y}${m}${d}`;
+  }
+
+  function getPowerDateWindow() {
+    const now = new Date();
+    const lastCompleteYear = Math.max(2020, now.getUTCFullYear() - 1);
+    const startYear = Math.max(1991, lastCompleteYear - 34);
+    const endDaily = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - 4));
+    const startDaily = new Date(endDaily.getTime() - 372 * 86400000);
+    return {
+      startYear,
+      lastCompleteYear,
+      dailyStartYmd: formatPowerYmd(startDaily),
+      dailyEndYmd: formatPowerYmd(endDaily)
+    };
+  }
+
+  function avgValid(values, minAllowed = -900) {
+    let sum = 0;
+    let count = 0;
+    for (const v of values) {
+      if (typeof v === "number" && Number.isFinite(v) && v > minAllowed) {
+        sum += v;
+        count += 1;
+      }
+    }
+    return count > 0 ? sum / count : null;
+  }
+
+  function computeFao56DailyEt0(tMeanC, rsMjDay, rhPct, wind2mMs, latDeg, doy) {
+    const t = clamp(Number(tMeanC) || 12, -30, 50);
+    const rh = clamp(Number(rhPct) || 65, 12, 100);
+    const u2 = clamp(Number(wind2mMs) || 2.0, 0.3, 12);
+    const rs = Math.max(0.5, Number(rsMjDay) || 5);
+    const es = 0.6108 * Math.exp((17.27 * t) / (t + 237.3));
+    const ea = es * (rh / 100);
+    const delta = (4098 * es) / Math.pow(t + 237.3, 2);
+    const gamma = 0.0665;
+    const phi = (clamp(latDeg, -66, 66) * Math.PI) / 180;
+    const dr = 1 + 0.033 * Math.cos((2 * Math.PI * doy) / 365);
+    const decl = 0.409 * Math.sin((2 * Math.PI * doy) / 365 - 1.39);
+    const ws = Math.acos(clamp(-Math.tan(phi) * Math.tan(decl), -1, 1));
+    const ra = ((24 * 60) / Math.PI) * 0.082 * dr * (ws * Math.sin(phi) * Math.sin(decl) + Math.cos(phi) * Math.cos(decl) * Math.sin(ws));
+    const rso = Math.max(0.5, 0.75 * ra);
+    const rns = 0.77 * rs;
+    const tk4 = Math.pow(t + 273.16, 4);
+    const rnl = 4.903e-9 * tk4 * (0.34 - 0.14 * Math.sqrt(Math.max(0.01, ea))) * (1.35 * Math.min(1, rs / rso) - 0.35);
+    const rn = Math.max(0, rns - rnl);
+    const num = 0.408 * delta * rn + gamma * (900 / (t + 273)) * u2 * Math.max(0, es - ea);
+    const den = delta + gamma * (1 + 0.34 * u2);
+    return Math.max(0.1, num / den);
+  }
+
+  function buildDynamicBaseline(lat, lon, powerBundle, soilGridsData) {
     const absLat = Math.abs(lat);
-    let annualPrecipMm = 540;
-    let annualEtDemandMm = 820;
+    const { lastCompleteYear } = getPowerDateWindow();
+    const monthly = powerBundle?.monthly || null;
+    const daily = powerBundle?.daily || null;
+    const clim = powerBundle?.climatology || (powerBundle && powerBundle.PRECTOTCORR ? powerBundle : null);
+
+    const mKeys = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
+    const daysInMo = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+    const doyMid = [15, 46, 75, 105, 135, 166, 196, 227, 258, 288, 319, 349];
+    const recentYears = Array.from({ length: 10 }, (_, idx) => lastCompleteYear - 9 + idx);
+
     let monthlyPrecipMm = [36, 34, 38, 44, 58, 66, 56, 48, 45, 42, 39, 34];
     let monthlyTempMaxC = [0, 2, 8, 15, 22, 26, 29, 28, 22, 14, 7, 2];
     let rootMoisturePct = 28;
     let deepMoisturePct = 36;
-    let sourceTag = "NASA POWER + Model";
+    let hasLiveNasa = false;
 
-    if (powerData && powerData.PRECTOTCORR) {
-      const mKeys = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
-      const daysInMo = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+    if (monthly?.PRECTOTCORR) {
+      hasLiveNasa = true;
+      monthlyPrecipMm = Array.from({ length: 12 }, (_, mIdx) => {
+        const mmStr = String(mIdx + 1).padStart(2, "0");
+        const avgDaily = avgValid(recentYears.map((y) => monthly.PRECTOTCORR[`${y}${mmStr}`]), -0.001);
+        return avgDaily != null ? Math.round(avgDaily * daysInMo[mIdx]) : monthlyPrecipMm[mIdx];
+      });
+    } else if (clim?.PRECTOTCORR) {
+      hasLiveNasa = true;
       monthlyPrecipMm = mKeys.map((mk, idx) => {
-        const val = powerData.PRECTOTCORR[mk];
+        const val = clim.PRECTOTCORR[mk];
         return val != null && val >= 0 ? Math.round(val * daysInMo[idx]) : monthlyPrecipMm[idx];
       });
-      annualPrecipMm = monthlyPrecipMm.reduce((a, b) => a + b, 0);
-
-      if (powerData.T2M_MAX) {
-        monthlyTempMaxC = mKeys.map((mk, idx) => {
-          const t = powerData.T2M_MAX[mk];
-          return t != null && t > -60 ? Number(t.toFixed(1)) : monthlyTempMaxC[idx];
-        });
-      }
-      if (powerData.GWETROOT) {
-        const vals = mKeys.map((mk) => powerData.GWETROOT[mk]).filter((v) => v != null && v >= 0);
-        if (vals.length) {
-          const avgRoot = vals.reduce((a, b) => a + b, 0) / vals.length;
-          rootMoisturePct = clamp(Math.round(avgRoot * 62), 14, 52);
-        }
-      }
-      if (powerData.GWETPROF) {
-        const vals = mKeys.map((mk) => powerData.GWETPROF[mk]).filter((v) => v != null && v >= 0);
-        if (vals.length) {
-          const avgProf = vals.reduce((a, b) => a + b, 0) / vals.length;
-          deepMoisturePct = clamp(Math.round(avgProf * 68), 18, 56);
-        }
-      }
-      sourceTag = "NASA POWER Live";
     } else {
       const latFactor = clamp((48 - absLat) / 48, 0, 1);
-      annualPrecipMm = Math.round(420 + (1 - latFactor) * 260);
-      monthlyPrecipMm = monthlyPrecipMm.map((v) => Math.round((v / 540) * annualPrecipMm));
+      const fallbackAnnual = Math.round(420 + (1 - latFactor) * 260);
+      monthlyPrecipMm = monthlyPrecipMm.map((v) => Math.round((v / 540) * fallbackAnnual));
+    }
+    const annualPrecipMm = monthlyPrecipMm.reduce((a, b) => a + b, 0);
+
+    let extremeHeatDays = null;
+    if (daily?.T2M_MAX) {
+      hasLiveNasa = true;
+      const validDailyTmax = Object.entries(daily.T2M_MAX)
+        .filter(([, v]) => typeof v === "number" && Number.isFinite(v) && v > -900)
+        .sort(([a], [b]) => a.localeCompare(b))
+        .slice(-365);
+
+      if (validDailyTmax.length >= 30) {
+        extremeHeatDays = validDailyTmax.reduce((acc, [, v]) => acc + (v >= 30 ? 1 : 0), 0);
+        const byMonth = Array.from({ length: 12 }, () => []);
+        for (const [ymd, v] of validDailyTmax) {
+          const mIdx = Number(ymd.slice(4, 6)) - 1;
+          if (mIdx >= 0 && mIdx < 12) byMonth[mIdx].push(v);
+        }
+        monthlyTempMaxC = byMonth.map((vals, mIdx) => {
+          const mAvg = avgValid(vals, -900);
+          if (mAvg != null) return Number(mAvg.toFixed(1));
+          const cVal = clim?.T2M_MAX?.[mKeys[mIdx]];
+          return cVal != null && cVal > -60 ? Number(cVal.toFixed(1)) : monthlyTempMaxC[mIdx];
+        });
+      }
+    } else if (clim?.T2M_MAX) {
+      hasLiveNasa = true;
+      monthlyTempMaxC = mKeys.map((mk, idx) => {
+        const val = clim.T2M_MAX[mk];
+        return val != null && val > -60 ? Number(val.toFixed(1)) : monthlyTempMaxC[idx];
+      });
     }
 
-    const monthlyEtMm = monthlyTempMaxC.map((tMax, i) => {
-      const baseEt = Math.max(12, (tMax + 4) * 3.9 + (absLat < 35 ? 25 : 8));
-      const seasonBoost = i >= 4 && i <= 7 ? 1.24 : 0.85;
-      return Math.round(baseEt * seasonBoost);
-    });
-    annualEtDemandMm = monthlyEtMm.reduce((a, b) => a + b, 0);
+    let monthlyEtMm = null;
+    if (monthly?.T2M && monthly?.ALLSKY_SFC_SW_DWN && monthly?.RH2M && monthly?.WS2M) {
+      monthlyEtMm = Array.from({ length: 12 }, (_, mIdx) => {
+        const mmStr = String(mIdx + 1).padStart(2, "0");
+        const tAvg = avgValid(recentYears.map((y) => monthly.T2M[`${y}${mmStr}`]), -900);
+        const rsAvg = avgValid(recentYears.map((y) => monthly.ALLSKY_SFC_SW_DWN[`${y}${mmStr}`]), -0.001);
+        const rhAvg = avgValid(recentYears.map((y) => monthly.RH2M[`${y}${mmStr}`]), -0.001);
+        const u2Avg = avgValid(recentYears.map((y) => monthly.WS2M[`${y}${mmStr}`]), -0.001);
+        if (tAvg == null || rsAvg == null || rhAvg == null || u2Avg == null) return null;
+        const et0 = computeFao56DailyEt0(tAvg, rsAvg, rhAvg, u2Avg, lat, doyMid[mIdx]);
+        return Math.round(et0 * daysInMo[mIdx] * 0.78);
+      });
+      if (monthlyEtMm.some((v) => v == null)) monthlyEtMm = null;
+    }
 
-    const growPrecip = monthlyPrecipMm.slice(3, 9).reduce((a, b) => a + b, 0);
-    const growEt = monthlyEtMm.slice(3, 9).reduce((a, b) => a + b, 0);
-    const seasonalWaterBalanceMm = Math.round(growPrecip - growEt * 0.78);
-    const hotMonths = monthlyTempMaxC.filter((t) => t >= 28).length;
-    const extremeHeatDays = clamp(hotMonths * 7 + (seasonalWaterBalanceMm < -120 ? 12 : 3), 5, 62);
-    const warmingAnomalyC = Number((1.15 + clamp((absLat - 20) / 50, 0.1, 0.7)).toFixed(1));
-    const droughtRiskScore = clamp(
-      Math.round(52 - seasonalWaterBalanceMm * 0.18 + (30 - rootMoisturePct) * 1.1 + extremeHeatDays * 0.25),
-      20,
-      94
-    );
+    if (!monthlyEtMm) {
+      monthlyEtMm = monthlyTempMaxC.map((tMax, i) => {
+        const baseEt = Math.max(12, (tMax + 4) * 3.9 + (absLat < 35 ? 25 : 8));
+        const seasonBoost = i >= 4 && i <= 7 ? 1.24 : 0.85;
+        return Math.round(baseEt * seasonBoost);
+      });
+    }
+    const annualEtDemandMm = monthlyEtMm.reduce((a, b) => a + b, 0);
+    const seasonalWaterBalanceMm = annualPrecipMm - annualEtDemandMm;
+
+    if (extremeHeatDays == null) {
+      const hotMonths = monthlyTempMaxC.filter((temp) => temp >= 28).length;
+      extremeHeatDays = clamp(hotMonths * 7 + (seasonalWaterBalanceMm < -120 ? 12 : 3), 0, 90);
+    }
+
+    let rootWetness = null;
+    let profWetness = null;
+    if (daily?.GWETROOT) {
+      const vals = Object.entries(daily.GWETROOT)
+        .filter(([, v]) => typeof v === "number" && Number.isFinite(v) && v >= 0)
+        .sort(([a], [b]) => a.localeCompare(b))
+        .slice(-14)
+        .map(([, v]) => v);
+      rootWetness = avgValid(vals, -0.001);
+    }
+    if (rootWetness == null && monthly?.GWETROOT) {
+      const vals = Object.entries(monthly.GWETROOT)
+        .filter(([k, v]) => !k.endsWith("13") && typeof v === "number" && Number.isFinite(v) && v >= 0)
+        .sort(([a], [b]) => a.localeCompare(b))
+        .slice(-3)
+        .map(([, v]) => v);
+      rootWetness = avgValid(vals, -0.001);
+    }
+    if (rootWetness == null && clim?.GWETROOT) {
+      rootWetness = avgValid(mKeys.map((mk) => clim.GWETROOT[mk]), -0.001);
+    }
+
+    if (daily?.GWETPROF) {
+      const vals = Object.entries(daily.GWETPROF)
+        .filter(([, v]) => typeof v === "number" && Number.isFinite(v) && v >= 0)
+        .sort(([a], [b]) => a.localeCompare(b))
+        .slice(-14)
+        .map(([, v]) => v);
+      profWetness = avgValid(vals, -0.001);
+    }
+    if (profWetness == null && monthly?.GWETPROF) {
+      const vals = Object.entries(monthly.GWETPROF)
+        .filter(([k, v]) => !k.endsWith("13") && typeof v === "number" && Number.isFinite(v) && v >= 0)
+        .sort(([a], [b]) => a.localeCompare(b))
+        .slice(-3)
+        .map(([, v]) => v);
+      profWetness = avgValid(vals, -0.001);
+    }
+    if (profWetness == null && clim?.GWETPROF) {
+      profWetness = avgValid(mKeys.map((mk) => clim.GWETPROF[mk]), -0.001);
+    }
+
+    if (rootWetness != null) {
+      hasLiveNasa = true;
+      rootMoisturePct = clamp(Math.round(rootWetness * 62), 12, 56);
+    }
+    if (profWetness != null) {
+      hasLiveNasa = true;
+      deepMoisturePct = clamp(Math.round(profWetness * 68), 16, 60);
+    }
+
+    let warmingAnomalyC = Number((1.15 + clamp((absLat - 20) / 50, 0.1, 0.7)).toFixed(1));
+    if (monthly?.T2M) {
+      const annualEntries = Object.entries(monthly.T2M)
+        .filter(([k, v]) => k.endsWith("13") && typeof v === "number" && Number.isFinite(v) && v > -900)
+        .map(([k, v]) => [Number(k.slice(0, 4)), v])
+        .sort(([a], [b]) => a - b);
+      const baseCutYear = Math.min(2020, lastCompleteYear - 5);
+      const baseTemps = annualEntries.filter(([y]) => y >= 1991 && y <= baseCutYear).map(([, v]) => v);
+      const recentTemps = annualEntries.filter(([y]) => y > lastCompleteYear - 5).map(([, v]) => v);
+      const baseMean = avgValid(baseTemps, -900);
+      const recentMean = avgValid(recentTemps, -900);
+      if (baseMean != null && recentMean != null && baseTemps.length >= 5 && recentTemps.length >= 2) {
+        warmingAnomalyC = Number((recentMean - baseMean).toFixed(1));
+      }
+    }
+
+    const aridityRatio = clamp((annualEtDemandMm - annualPrecipMm) / Math.max(annualEtDemandMm, 300), -0.5, 0.9);
+    const moistureDeficit = clamp((38 - rootMoisturePct) * 1.15, -18, 30);
+    const heatStressPts = clamp(extremeHeatDays * 0.22, 0, 26);
+    const droughtRiskScore = clamp(Math.round(36 + aridityRatio * 48 + moistureDeficit + heatStressPts), 14, 96);
+
+    const sourceTag = hasLiveNasa
+      ? (monthly && daily ? "NASA POWER Daily+Monthly" : "NASA POWER Live")
+      : "NASA POWER + Model";
 
     let defaultSoilType = absLat > 44 ? "chernozem" : absLat < 24 ? "oxisol" : "silt_loam";
     let defaultSomPct = absLat > 44 ? 3.5 : 2.3;
@@ -566,6 +733,7 @@
       defaultSomPct,
       defaultSoilPh,
       sourceTag,
+      hasLiveNasa,
       nasaBaseline: {
         rootMoisturePct,
         deepMoisturePct,
@@ -575,7 +743,6 @@
         seasonalWaterBalanceMm,
         warmingAnomalyC,
         extremeHeatDays,
-        ndviBaseline: Number(clamp(0.45 + rootMoisturePct * 0.008, 0.35, 0.82).toFixed(2)),
         droughtRiskScore,
         monthlyPrecipMm,
         monthlyEtMm,
@@ -584,10 +751,52 @@
     };
   }
 
+  function buildLiveFieldDiagnosis(field, base, sourceTag) {
+    const balSign = base.seasonalWaterBalanceMm >= 0 ? "+" : "";
+    const anomSign = base.warmingAnomalyC >= 0 ? "+" : "";
+    const prevId = field.defaultPrevCrop || "corn";
+    const prevEn = DATA.crops[prevId]?.shortName || prevId;
+    const prevUa = DATA.i18n?.crops?.[prevId]?.shortName_ua || prevEn;
+    const stratEn = base.seasonalWaterBalanceMm < -120 || base.extremeHeatDays >= 35
+      ? "Prioritizing drought-tolerant legumes and deep C4/winter grains restores root-zone stability."
+      : "Balancing legume nitrogen fixation with cover mulch protects profile moisture across seasons.";
+    const stratUa = base.seasonalWaterBalanceMm < -120 || base.extremeHeatDays >= 35
+      ? "Пріоритет посухостійких бобових та озимих/C4-культур відновлює стійкість водного балансу."
+      : "Поєднання азотфіксуючих бобових і мульчування стабілізує запаси вологи між сезонами.";
+
+    return {
+      humanDiagnosis: `Live NASA POWER (${sourceTag}) reports ${base.rootMoisturePct}% root / ${base.deepMoisturePct}% profile soil wetness following ${prevEn}, with ${balSign}${base.seasonalWaterBalanceMm} mm annual P\u2212ET balance (${anomSign}${base.warmingAnomalyC}\u00B0C warming vs 1991\u20132020, ${base.extremeHeatDays} days \u2265 30\u00B0C). ${stratEn}`,
+      humanDiagnosis_ua: `Живі дані NASA POWER (${sourceTag}): вологість коренів ${base.rootMoisturePct}% / глибшого профілю ${base.deepMoisturePct}% після ${prevUa}, річний баланс P\u2212ET ${balSign}${base.seasonalWaterBalanceMm} мм (${anomSign}${base.warmingAnomalyC}\u00B0C до 1991\u20132020 рр., ${base.extremeHeatDays} дн. \u2265 30\u00B0C). ${stratUa}`
+    };
+  }
+
+  function applyLiveTelemetryToField(field, powerBundle, soilGridsData) {
+    if (!field || (!powerBundle && !soilGridsData)) return null;
+    const updated = buildDynamicBaseline(field.lat, field.lon, powerBundle, soilGridsData);
+    if (powerBundle && updated.hasLiveNasa) {
+      field.nasaBaseline = updated.nasaBaseline;
+      field.liveTelemetrySynced = true;
+      const diag = buildLiveFieldDiagnosis(field, updated.nasaBaseline, updated.sourceTag);
+      field.humanDiagnosis = diag.humanDiagnosis;
+      field.humanDiagnosis_ua = diag.humanDiagnosis_ua;
+    }
+    if (!field.isDemo) {
+      field.climateZone = updated.climateZone;
+      if (!state.overrides && soilGridsData) {
+        field.defaultSoilType = updated.defaultSoilType;
+        field.defaultSomPct = updated.defaultSomPct;
+        field.defaultSoilPh = updated.defaultSoilPh;
+      }
+    }
+    return updated;
+  }
+
   function buildCustomFieldObject(name, lat, lon, polygon, telemetryBundle) {
     const areaHa = computePolygonAreaHa(polygon);
     const dyn = buildDynamicBaseline(lat, lon, telemetryBundle?.power, telemetryBundle?.soilGrids);
     const dryBias = dyn.nasaBaseline.seasonalWaterBalanceMm < -90;
+    const prevCropId = dryBias ? "sunflower" : "corn";
+    const diag = buildLiveFieldDiagnosis({ defaultPrevCrop: prevCropId }, dyn.nasaBaseline, dyn.sourceTag);
     const seqWater = dryBias
       ? ["winter_barley", "chickpea", "sorghum", "lentil"]
       : ["winter_wheat", "chickpea", "corn", "soybean"];
@@ -611,11 +820,12 @@
       defaultSoilType: dyn.defaultSoilType,
       defaultSomPct: dyn.defaultSomPct,
       defaultSoilPh: dyn.defaultSoilPh,
-      defaultPrevCrop: dryBias ? "sunflower" : "corn",
+      defaultPrevCrop: prevCropId,
       defaultAreaHa: areaHa,
+      liveTelemetrySynced: dyn.hasLiveNasa,
       nasaBaseline: dyn.nasaBaseline,
-      humanDiagnosis: `Live telemetry sampled at ${lat.toFixed(3)}, ${lon.toFixed(3)} (${dyn.sourceTag}). Seasonal balance is ${dyn.nasaBaseline.seasonalWaterBalanceMm >= 0 ? "+" : ""}${dyn.nasaBaseline.seasonalWaterBalanceMm} mm with ${dyn.nasaBaseline.extremeHeatDays} annual heat-stress days.`,
-      humanDiagnosis_ua: `Телеметрія вибірки на ${lat.toFixed(3)}, ${lon.toFixed(3)} (${dyn.sourceTag}). Сезонний водний баланс: ${dyn.nasaBaseline.seasonalWaterBalanceMm >= 0 ? "+" : ""}${dyn.nasaBaseline.seasonalWaterBalanceMm} мм з ${dyn.nasaBaseline.extremeHeatDays} днями теплового стресу на рік.`,
+      humanDiagnosis: diag.humanDiagnosis,
+      humanDiagnosis_ua: diag.humanDiagnosis_ua,
       traditionalRotation: dryBias
         ? ["sunflower", "winter_wheat", "sunflower", "corn"]
         : ["corn", "corn", "soybean", "corn"],
@@ -881,6 +1091,53 @@
     }
   }
 
+  const powerInflight = new Map();
+
+  async function fetchPowerOnly(lat, lon) {
+    const cacheKey = `${lat.toFixed(2)},${lon.toFixed(2)}`;
+    if (state.powerCache.has(cacheKey)) {
+      return state.powerCache.get(cacheKey);
+    }
+    if (powerInflight.has(cacheKey)) {
+      return powerInflight.get(cacheKey);
+    }
+
+    const reqPromise = (async () => {
+      const { startYear, lastCompleteYear, dailyStartYmd, dailyEndYmd } = getPowerDateWindow();
+      const monthlyUrl = `https://power.larc.nasa.gov/api/temporal/monthly/point?parameters=T2M,PRECTOTCORR,GWETROOT,GWETPROF,ALLSKY_SFC_SW_DWN,RH2M,WS2M&community=AG&longitude=${lon}&latitude=${lat}&start=${startYear}&end=${lastCompleteYear}&format=JSON`;
+      const dailyUrl = `https://power.larc.nasa.gov/api/temporal/daily/point?parameters=T2M_MAX,PRECTOTCORR,GWETROOT,GWETPROF&community=AG&longitude=${lon}&latitude=${lat}&start=${dailyStartYmd}&end=${dailyEndYmd}&format=JSON`;
+
+      const [monthlyRes, dailyRes] = await Promise.allSettled([
+        fetchWithTimeout(monthlyUrl, 11000),
+        fetchWithTimeout(dailyUrl, 11000)
+      ]);
+
+      const monthly = monthlyRes.status === "fulfilled" ? monthlyRes.value?.properties?.parameter || null : null;
+      const daily = dailyRes.status === "fulfilled" ? dailyRes.value?.properties?.parameter || null : null;
+
+      let climatology = null;
+      if (!monthly && !daily) {
+        const climUrl = `https://power.larc.nasa.gov/api/temporal/climatology/point?parameters=T2M_MAX,PRECTOTCORR,GWETROOT,GWETPROF&community=AG&longitude=${lon}&latitude=${lat}&format=JSON`;
+        try {
+          const climJson = await fetchWithTimeout(climUrl, 9000);
+          climatology = climJson?.properties?.parameter || null;
+        } catch (_err) {
+          climatology = null;
+        }
+      }
+
+      if (!monthly && !daily && !climatology) return null;
+      const bundle = { monthly, daily, climatology };
+      state.powerCache.set(cacheKey, bundle);
+      return bundle;
+    })().finally(() => {
+      powerInflight.delete(cacheKey);
+    });
+
+    powerInflight.set(cacheKey, reqPromise);
+    return reqPromise;
+  }
+
   async function fetchRawBundle(lat, lon) {
     const cacheKey = `${lat.toFixed(2)},${lon.toFixed(2)}`;
     if (state.nasaCache.has(cacheKey)) {
@@ -888,13 +1145,12 @@
     }
 
     const meteoUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,wind_speed_10m,precipitation,soil_temperature_0cm,soil_moisture_0_to_1cm,soil_moisture_9_to_27cm,soil_moisture_27_to_81cm&daily=precipitation_sum,temperature_2m_max,et0_fao_evapotranspiration&forecast_days=7&timezone=auto`;
-    const powerUrl = `https://power.larc.nasa.gov/api/temporal/climatology/point?parameters=T2M_MAX,PRECTOTCORR,GWETROOT,GWETPROF&community=AG&longitude=${lon}&latitude=${lat}&format=JSON`;
     const soilUrl = `https://rest.isric.org/soilgrids/v2.0/properties/query?lon=${lon}&lat=${lat}&property=clay&property=sand&property=phh2o&property=soc&depth=0-5cm&value=mean`;
 
     const [meteoRes, powerRes, soilRes] = await Promise.allSettled([
-      fetchWithTimeout(meteoUrl, 7500),
-      fetchWithTimeout(powerUrl, 8000),
-      fetchWithTimeout(soilUrl, 7500)
+      fetchWithTimeout(meteoUrl, 8000),
+      fetchPowerOnly(lat, lon),
+      fetchWithTimeout(soilUrl, 12000)
     ]);
 
     let meteo = null;
@@ -902,10 +1158,7 @@
       meteo = meteoRes.value;
     }
 
-    let power = null;
-    if (powerRes.status === "fulfilled" && powerRes.value?.properties?.parameter) {
-      power = powerRes.value.properties.parameter;
-    }
+    const power = powerRes.status === "fulfilled" ? powerRes.value || null : null;
 
     let soilGrids = null;
     if (soilRes.status === "fulfilled" && soilRes.value?.properties?.layers) {
@@ -939,12 +1192,19 @@
 
     const seq = ++state.activeRequestSeq;
     const cacheKey = `${field.lat.toFixed(2)},${field.lon.toFixed(2)}`;
-    if (forceRefresh) state.nasaCache.delete(cacheKey);
+    if (forceRefresh) {
+      state.nasaCache.delete(cacheKey);
+      state.powerCache.delete(cacheKey);
+    }
 
     state.telemetryLoading = !state.nasaCache.has(cacheKey);
     renderTelemetryStatus();
 
     const bundle = await fetchRawBundle(field.lat, field.lon);
+    if (bundle.power || bundle.soilGrids) {
+      applyLiveTelemetryToField(field, bundle.power, bundle.soilGrids);
+      if (!field.isDemo) saveFieldsToStorage();
+    }
     if (seq !== state.activeRequestSeq) return;
 
     state.telemetryLoading = false;
@@ -953,19 +1213,58 @@
     state.liveSoilGrids = bundle.soilGrids || null;
     state.livePowerStats = bundle.power || null;
 
-    if (!field.isDemo && (bundle.power || bundle.soilGrids)) {
-      const updated = buildDynamicBaseline(field.lat, field.lon, bundle.power, bundle.soilGrids);
-      field.nasaBaseline = updated.nasaBaseline;
-      field.climateZone = updated.climateZone;
-      if (!state.overrides) {
-        field.defaultSoilType = updated.defaultSoilType;
-        field.defaultSomPct = updated.defaultSomPct;
-        field.defaultSoilPh = updated.defaultSoilPh;
-      }
-      saveFieldsToStorage();
-    }
-
     renderAll();
+    if (!tourActive) renderZonesOverlay();
+  }
+
+  async function hydratePortfolioAndZonesTelemetry() {
+    const tasks = [
+      ...state.fields.map((f) => ({ kind: "field", target: f })),
+      ...EXTRA_NASA_ZONES.map((z) => ({ kind: "zone", target: z }))
+    ];
+    let idx = 0;
+    let changedCustom = false;
+
+    const runWorker = async () => {
+      while (idx < tasks.length) {
+        const item = tasks[idx];
+        idx += 1;
+        const { kind, target } = item;
+        try {
+          const powerBundle = await fetchPowerOnly(target.lat, target.lon);
+          if (!powerBundle) continue;
+          if (kind === "field") {
+            const applied = applyLiveTelemetryToField(target, powerBundle, null);
+            if (applied?.hasLiveNasa && !target.isDemo) changedCustom = true;
+          } else {
+            const dyn = buildDynamicBaseline(target.lat, target.lon, powerBundle, null);
+            if (dyn.hasLiveNasa) {
+              target.moisturePct = dyn.nasaBaseline.rootMoisturePct;
+              target.balanceMm = dyn.nasaBaseline.seasonalWaterBalanceMm;
+              target.risk = dyn.nasaBaseline.droughtRiskScore >= 68 ? "high" : dyn.nasaBaseline.droughtRiskScore >= 45 ? "mod" : "low";
+              target.liveSynced = true;
+            }
+          }
+        } catch (_err) {
+          // Keep offline benchmark defaults when a background NASA lookup fails.
+        }
+      }
+    };
+
+    await Promise.all([runWorker(), runWorker()]);
+    if (changedCustom) saveFieldsToStorage();
+    if (tourActive) return;
+
+    const active = getActiveField();
+    if (active && !state.livePowerStats) {
+      const activeKey = `${active.lat.toFixed(2)},${active.lon.toFixed(2)}`;
+      if (state.powerCache.has(activeKey)) {
+        state.livePowerStats = state.powerCache.get(activeKey);
+      }
+    }
+    renderAll();
+    renderZonesOverlay();
+    if (state.activeView === "portfolio") renderPortfolioModal();
   }
 
   function renderTelemetryStatus() {
@@ -982,12 +1281,19 @@
     }
     badge.classList.remove("is-syncing");
     const parts = [];
-    if (state.livePowerStats || getActiveField()?.isDemo) parts.push("NASA");
+    if (state.livePowerStats) parts.push("NASA");
     if (state.liveCurrent) parts.push("Meteo");
     if (state.liveSoilGrids) parts.push("SoilGrids");
     badge.textContent = parts.length ? parts.join(" + ") : (isUa ? "Еталон" : "Benchmark");
     weatherBadge.textContent = state.liveForecast ? (isUa ? "Наживо ECMWF 7 днів" : "Live ECMWF 7-Day") : (isUa ? "Автономний прогноз" : "Offline Forecast");
-    stripStatus.textContent = "NASA POWER \u00B7 SMAP L4 \u00B7 OPEN-METEO ECMWF \u00B7 SOILGRIDS v2.0";
+
+    const stripParts = [];
+    if (state.livePowerStats) stripParts.push("NASA POWER (FAO-56)");
+    if (state.liveCurrent || state.liveForecast) stripParts.push("OPEN-METEO ECMWF");
+    if (state.liveSoilGrids) stripParts.push("SOILGRIDS v2.0");
+    stripStatus.textContent = stripParts.length
+      ? stripParts.join(" \u00B7 ")
+      : (isUa ? "АВТОНОМНИЙ ДОВІДНИК" : "OFFLINE REFERENCE");
   }
 
   function normalizeLat(lat) {
@@ -1128,21 +1434,24 @@
       .setContent(
         `<div class="probe-title">${isUa ? "Точковий аналіз телеметрії" : "Point Telemetry Probe"}</div>
          <div class="probe-coords">${cleanLat.toFixed(4)}°, ${cleanLon.toFixed(4)}°</div>
-         <div style="color:var(--ink-muted);font-size:11px;">${isUa ? "Запит до Open-Meteo та SoilGrids..." : "Querying Open-Meteo &amp; SoilGrids..."}</div>`
+         <div style="color:var(--ink-muted);font-size:11px;">${isUa ? "Запит до NASA POWER, Open-Meteo та SoilGrids..." : "Querying NASA POWER, Open-Meteo &amp; SoilGrids..."}</div>`
       )
       .openOn(map);
 
     const bundle = await fetchRawBundle(cleanLat, cleanLon);
     if (seq !== activeProbeSeq || state.activeView !== "workspace") return;
 
+    const mmUnit = isUa ? "мм" : "mm";
     const temp = bundle.meteo?.current?.temperature_2m != null ? `${Math.round(bundle.meteo.current.temperature_2m)}°C` : "--";
     const rainSum = Array.isArray(bundle.meteo?.daily?.precipitation_sum)
-      ? `${bundle.meteo.daily.precipitation_sum.reduce((a, b) => a + (Number(b) || 0), 0).toFixed(1)} ${isUa ? "мм" : "mm"}`
+      ? `${bundle.meteo.daily.precipitation_sum.reduce((a, b) => a + (Number(b) || 0), 0).toFixed(1)} ${mmUnit}`
       : "--";
-    const smTop = bundle.meteo?.hourly?.soil_moisture_0_to_1cm?.[0] != null
-      ? `${Math.round(Number(bundle.meteo.hourly.soil_moisture_0_to_1cm[0]) * 100)}%`
-      : "--";
+    const smTopRaw = bundle.meteo?.current?.soil_moisture_0_to_1cm;
+    const smTop = smTopRaw != null ? `${Math.round(Number(smTopRaw) * 100)}%` : "--";
     const phVal = bundle.soilGrids?.ph != null ? Number(bundle.soilGrids.ph).toFixed(1) : "--";
+    const dynPower = bundle.power ? buildDynamicBaseline(cleanLat, cleanLon, bundle.power, bundle.soilGrids) : null;
+    const nasaRootStr = dynPower?.hasLiveNasa ? `${dynPower.nasaBaseline.rootMoisturePct}%` : "--";
+    const nasaRainStr = dynPower?.hasLiveNasa ? `${dynPower.nasaBaseline.annualPrecipMm} ${mmUnit}` : "--";
 
     probePopup.setContent(
       `<div class="probe-title">${isUa ? "Точковий аналіз NASA / ECMWF" : "NASA / ECMWF Point Probe"}</div>
@@ -1152,6 +1461,8 @@
          <div class="probe-cell"><span>${isUa ? "Опади 7д" : "7d Precip"}</span><strong>${rainSum}</strong></div>
          <div class="probe-cell"><span>${isUa ? "Волога 0–1 см" : "0–1 cm Moist."}</span><strong>${smTop}</strong></div>
          <div class="probe-cell"><span>${isUa ? "pH SoilGrids" : "SoilGrids pH"}</span><strong>${phVal}</strong></div>
+         <div class="probe-cell"><span>${isUa ? "Волога кор. NASA" : "NASA Root Moist."}</span><strong>${nasaRootStr}</strong></div>
+         <div class="probe-cell"><span>${isUa ? "Опади / рік NASA" : "NASA Rain / yr"}</span><strong>${nasaRainStr}</strong></div>
        </div>`
     );
   }
@@ -1382,9 +1693,9 @@
       const sign = z.balanceMm >= 0 ? "+" : "";
       const balLabel = state.lang === "ua" ? "Баланс" : "Bal";
       const waterUnit = state.lang === "ua" ? "мм" : "mm";
-      const labelHtml = `<strong>${escapeHtml(z.name)}</strong><br>SMAP ${z.moisturePct}% &middot; ${balLabel} ${sign}${z.balanceMm} ${waterUnit}`;
+      const labelHtml = `<strong>${escapeHtml(z.name)}</strong><br>NASA ${z.moisturePct}% &middot; ${balLabel} ${sign}${z.balanceMm} ${waterUnit}`;
 
-      marker.bindTooltip(showPermanent ? `${z.moisturePct}% SMAP` : labelHtml, {
+      marker.bindTooltip(showPermanent ? `${z.moisturePct}% NASA` : labelHtml, {
         permanent: showPermanent,
         direction: "right",
         offset: [6, 0]
@@ -1554,7 +1865,7 @@
       ? `${b.annualPrecipMm} мм опадів vs ${b.annualEtDemandMm} мм ET`
       : `${b.annualPrecipMm} rain vs ${b.annualEtDemandMm} ET`;
 
-    $("kpiAnomalyVal").textContent = `+${b.warmingAnomalyC}\u00B0C`;
+    $("kpiAnomalyVal").textContent = `${b.warmingAnomalyC >= 0 ? "+" : ""}${b.warmingAnomalyC}\u00B0C`;
     $("kpiAnomalySub").textContent = isUa
       ? `${b.extremeHeatDays} дн. \u2265 30\u00B0C`
       : `${b.extremeHeatDays} days \u2265 30\u00B0C`;
@@ -1813,7 +2124,7 @@
           `Сівба культури ${getCropName(recSim.yearly[0].cropId)} (${getCropWindow(recSim.yearly[0].cropId)}) одразу після пожнивних решток ${getCropName(eff.prevCrop)}.`,
           state.useCoverCrop
             ? `Висів сидерату ${getCoverCropName(state.coverCropId)} одразу у післяжнивні вікна для збереження ~${cover.waterRetentionBonusMm || 20} мм вологи та накопичення +${cover.nBonusKg || 25} кг/га N.`
-            : "Щомісячний моніторинг зимового випаровування вологи за супутниковими оновленнями NASA SMAP.",
+            : "Щомісячний моніторинг зимового випаровування вологи за оновленнями NASA POWER (GWETROOT).",
           state.useNoTill
             ? "Збереження стерні та покривного мульчування (No-Till) для охолодження ґрунту та кращої інфільтрації дощу."
             : "Мінімізація глибокої оранки перед посушливими весняними вікнами сівби.",
@@ -1823,7 +2134,7 @@
           `Establish ${DATA.crops[recSim.yearly[0].cropId].name} (${DATA.crops[recSim.yearly[0].cropId].windowLabel}) directly following ${DATA.crops[eff.prevCrop]?.name || eff.prevCrop} residue.`,
           state.useCoverCrop
             ? `Seed ${cover.name} immediately after harvest gaps to retain ~${cover.waterRetentionBonusMm || 20} mm moisture and supply +${cover.nBonusKg || 25} kg/ha N.`
-            : "Monitor winter soil moisture evaporation monthly using NASA SMAP updates.",
+            : "Monitor winter soil moisture evaporation monthly using NASA POWER (GWETROOT) updates.",
           state.useNoTill
             ? "Maintain zero/strip-till stubble to shield topsoil temperature and boost rainwater infiltration."
             : "Minimize deep inversion passes prior to dry spring planting windows.",
@@ -1849,7 +2160,7 @@
 
     const titleStr = isUa ? "Field Shift — 4-річний агротехнічний план" : "Field Shift — 4-Year Agronomic Prescription";
     const genStr = isUa ? `Створено ${new Date().toISOString().slice(0, 10)}` : `Generated ${new Date().toISOString().slice(0, 10)}`;
-    const authStr = isUa ? "Верифіковано NASA POWER & SMAP" : "NASA POWER & SMAP Verified";
+    const authStr = isUa ? "Верифіковано NASA POWER & Open-Meteo" : "NASA POWER & Open-Meteo Verified";
     const lblArea = isUa ? "Площа ділянки" : "Parcel Area";
     const lblSoil = isUa ? "Ґрунтовий профіль" : "Soil Profile";
     const lblWater = isUa ? "Сер. приріст вологи" : "Avg Water Gain";
@@ -1922,8 +2233,8 @@
 
       <div class="ps-footer">
         ${isUa
-          ? "Система підтримки агрономічних рішень Field Shift GIS \u00B7 Розрахунки на базі кліматології NASA POWER, вологості SMAP, Open-Meteo ECMWF та ISRIC SoilGrids v2.0."
-          : "Field Shift Agronomic GIS Decision Support \u00B7 Models powered by NASA POWER Climatology, SMAP Root Moisture, Open-Meteo ECMWF & ISRIC SoilGrids v2.0."}
+          ? "Система підтримки агрономічних рішень Field Shift GIS \u00B7 Розрахунки на базі рядів NASA POWER (GWETROOT/GEOS), FAO-56 ET, Open-Meteo ECMWF та ISRIC SoilGrids v2.0."
+          : "Field Shift Agronomic GIS Decision Support \u00B7 Powered by NASA POWER (GWETROOT/GEOS) series, FAO-56 ET, Open-Meteo ECMWF & ISRIC SoilGrids v2.0."}
       </div>
     `;
   }
@@ -1977,7 +2288,7 @@
       ? `Охоплено ділянок: ${state.fields.length} \u00B7 Пріоритет: ${getPriorityModeLabel(state.priorityMode)}`
       : `Parcels included: ${state.fields.length} \u00B7 Strategy: ${getPriorityModeLabel(state.priorityMode)}`;
     const genStr = isUa ? `Створено ${new Date().toISOString().slice(0, 10)}` : `Generated ${new Date().toISOString().slice(0, 10)}`;
-    const authStr = isUa ? "Верифіковано NASA POWER & SMAP" : "NASA POWER & SMAP Verified";
+    const authStr = isUa ? "Верифіковано NASA POWER & Open-Meteo" : "NASA POWER & Open-Meteo Verified";
 
     $("printSheet").innerHTML = `
       <div class="ps-header">
@@ -2008,7 +2319,7 @@
             <th>${isUa ? "Ділянка" : "Parcel"}</th>
             <th>${isUa ? "Регіон" : "Region"}</th>
             <th>${isUa ? "Площа" : "Area"}</th>
-            <th>${isUa ? "Волога SMAP" : "SMAP Moist."}</th>
+            <th>${isUa ? "Волога NASA" : "NASA Moist."}</th>
             <th>${isUa ? "4-річний план" : "4-Yr Plan"}</th>
             <th>${isUa ? "Волога \u0394" : "Water \u0394"}</th>
             <th>${isUa ? "Прибуток \u0394" : "4-Yr Profit \u0394"}</th>
@@ -2019,8 +2330,8 @@
 
       <div class="ps-footer">
         ${isUa
-          ? "Зведений звіт портфеля Field Shift GIS \u00B7 Кліматичні ряди NASA POWER, вологість SMAP L4, прогноз Open-Meteo та SoilGrids v2.0."
-          : "Field Shift Portfolio Summary \u00B7 Powered by NASA POWER Climatology, SMAP L4 Root Moisture, Open-Meteo ECMWF & ISRIC SoilGrids v2.0."}
+          ? "Зведений звіт портфеля Field Shift GIS \u00B7 Часові ряди NASA POWER (GWETROOT), FAO-56 ET, прогноз Open-Meteo та SoilGrids v2.0."
+          : "Field Shift Portfolio Summary \u00B7 Powered by NASA POWER (GWETROOT) time series, FAO-56 ET, Open-Meteo ECMWF & ISRIC SoilGrids v2.0."}
       </div>
     `;
   }
@@ -4159,6 +4470,9 @@
     bindEvents();
     selectField(state.activeFieldId, true);
     initTour();
+    setTimeout(() => {
+      hydratePortfolioAndZonesTelemetry();
+    }, 900);
   }
 
   document.addEventListener("DOMContentLoaded", init);
