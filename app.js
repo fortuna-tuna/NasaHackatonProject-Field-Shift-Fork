@@ -272,6 +272,7 @@
     if (btnUa) btnUa.classList.toggle("is-active", isUa);
     document.documentElement.lang = isUa ? "uk" : "en";
     updateThemeButtonUi();
+    if (typeof updateLeftNavLabel === "function") updateLeftNavLabel();
     if (typeof syncCustomSelects === "function") syncCustomSelects();
   }
 
@@ -3184,6 +3185,35 @@
     }
   }
 
+  function updateLeftNavLabel() {
+    const toggleBtn = $("leftNavToggleBtn");
+    if (!toggleBtn) return;
+    const keyMap = {
+      workspace: "navMap",
+      portfolio: "navPortfolio",
+      crops: "navCrops",
+      science: "navScience"
+    };
+    const key = keyMap[state.activeView] || "navMap";
+    const viewLabel = t(key, "Map Workspace");
+    const fullTitle = `${t("leftNavTitle", "Open navigation panel & views")} · ${viewLabel}`;
+    toggleBtn.title = fullTitle;
+    toggleBtn.setAttribute("aria-label", fullTitle);
+  }
+
+  function toggleLeftNav(open) {
+    const drawer = $("leftNavDrawer");
+    const backdrop = $("leftNavBackdrop");
+    const toggleBtn = $("leftNavToggleBtn");
+    if (!drawer) return;
+    const nextOpen = open === undefined ? !drawer.classList.contains("is-open") : Boolean(open);
+    drawer.classList.toggle("is-open", nextOpen);
+    drawer.setAttribute("aria-hidden", nextOpen ? "false" : "true");
+    backdrop?.classList.toggle("is-hidden", !nextOpen);
+    toggleBtn?.classList.toggle("is-active", nextOpen);
+    toggleBtn?.setAttribute("aria-expanded", nextOpen ? "true" : "false");
+  }
+
   function setTopNavActive(id) {
     document.querySelectorAll(".top-nav-btn").forEach((b) => {
       b.classList.toggle("is-active", b.id === id);
@@ -3204,6 +3234,7 @@
       science: "railScienceBtn"
     };
     setTopNavActive(navMap[viewName] || "railMapBtn");
+    updateLeftNavLabel();
 
     if (viewName === "portfolio") renderPortfolioModal();
     else if (viewName === "crops") renderCropLibraryModal();
@@ -3291,19 +3322,50 @@
     $("collapseInspectorBtn").addEventListener("click", () => toggleInspector(true));
     $("inspectorExpandTab").addEventListener("click", () => toggleInspector(false));
 
-    $("railWorkspaceBtn")?.addEventListener("click", () => {
-      if (state.activeView !== "workspace") {
-        setWorkspaceView("workspace");
-        toggleSidebar(false);
-        return;
-      }
-      toggleSidebar(!shell.classList.contains("sidebar-collapsed"));
+    $("leftNavToggleBtn")?.addEventListener("click", () => toggleLeftNav());
+    $("leftNavCloseBtn")?.addEventListener("click", () => toggleLeftNav(false));
+    $("leftNavBackdrop")?.addEventListener("click", () => toggleLeftNav(false));
+
+    $("railMapBtn").addEventListener("click", () => {
+      setWorkspaceView("workspace");
+      toggleLeftNav(false);
+    });
+    $("railPortfolioBtn").addEventListener("click", () => {
+      setWorkspaceView("portfolio");
+      toggleLeftNav(false);
+    });
+    $("railCropsBtn").addEventListener("click", () => {
+      setWorkspaceView("crops");
+      toggleLeftNav(false);
+    });
+    $("railScienceBtn").addEventListener("click", () => {
+      setWorkspaceView("science");
+      toggleLeftNav(false);
     });
 
-    $("railMapBtn").addEventListener("click", () => setWorkspaceView("workspace"));
-    $("railPortfolioBtn").addEventListener("click", () => setWorkspaceView("portfolio"));
-    $("railCropsBtn").addEventListener("click", () => setWorkspaceView("crops"));
-    $("railScienceBtn").addEventListener("click", () => setWorkspaceView("science"));
+    $("drawerDrawFieldBtn")?.addEventListener("click", () => {
+      toggleLeftNav(false);
+      $("btnDrawField")?.click();
+    });
+    $("drawerImportGeoBtn")?.addEventListener("click", () => {
+      toggleLeftNav(false);
+      $("btnImportGeo")?.click();
+    });
+    $("drawerPrintBtn")?.addEventListener("click", () => {
+      toggleLeftNav(false);
+      triggerPortfolioPrint();
+    });
+    $("drawerTourBtn")?.addEventListener("click", () => {
+      toggleLeftNav(false);
+      startTour();
+    });
+
+    document.addEventListener("keydown", (ev) => {
+      if (ev.key === "Escape" && !tourActive && $("leftNavDrawer")?.classList.contains("is-open")) {
+        toggleLeftNav(false);
+      }
+    });
+
     $("railPrintBtn").addEventListener("click", triggerPortfolioPrint);
     $("tourRestartBtn")?.addEventListener("click", () => startTour());
 
@@ -3358,7 +3420,12 @@
         return;
       }
       const card = ev.target.closest("[data-field-id]");
-      if (card) selectField(card.dataset.fieldId, true);
+      if (card) {
+        selectField(card.dataset.fieldId, true);
+        if (window.innerWidth <= 900 && !tourActive) {
+          toggleSidebar(true);
+        }
+      }
     });
 
     $("locationSearchInput").addEventListener("input", (ev) => {
@@ -4096,15 +4163,16 @@
     },
     {
       getTargets: () => [
-        document.querySelector(".top-nav-pills"),
+        $("leftNavToggleBtn"),
         document.querySelector(".cmd-right")
-      ],
+      ].filter((el) => el && el.getBoundingClientRect().width > 0),
       side: "bottom",
       scrollAlign: "page-top",
       titleKey: "tourStep7Title",
       descKey: "tourStep7Desc",
       prepare() {
         closeTourPopupOnly();
+        toggleLeftNav(false);
         restoreTourBackupState("climate");
         setWorkspaceView("workspace");
         setInspectorScrollTop(0, false);
@@ -4117,27 +4185,31 @@
           if (!tourActive) return;
           applyTheme(flipTheme, false, false);
           flashTourControl($("themeToggleBtn"));
-        }, 460);
+        }, 420);
         scheduleTour(() => {
           if (!tourActive) return;
+          toggleLeftNav(true);
+          tourTargetsOverride = [$("leftNavDrawer")].filter(Boolean);
           setWorkspaceView("portfolio");
           flashTourControl($("railPortfolioBtn"));
-          scheduleTour(() => realignTour(true), 24);
-        }, 1150);
+          scheduleTour(() => realignTour(true), 240);
+        }, 1050);
         scheduleTour(() => {
           if (!tourActive) return;
           setWorkspaceView("crops");
           flashTourControl($("railCropsBtn"));
-          scheduleTour(() => realignTour(true), 24);
+          scheduleTour(() => realignTour(true), 40);
         }, 1780);
         scheduleTour(() => {
           if (!tourActive) return;
+          toggleLeftNav(false);
+          tourTargetsOverride = null;
           setWorkspaceView("workspace");
           applyTheme(baseTheme, false, false);
-          flashTourControl($("railMapBtn"));
+          flashTourControl($("leftNavToggleBtn"));
           flashTourControl($("themeToggleBtn"));
-          scheduleTour(() => realignTour(true), 24);
-        }, 2380);
+          scheduleTour(() => realignTour(true), 240);
+        }, 2460);
       }
     }
   ];
@@ -4295,6 +4367,7 @@
     const step = TOUR_STEPS[tourStepIndex];
     if (tourBackup && tourStepIndex < TOUR_STEPS.length - 1) {
       applyTheme(tourBackup.theme || "light", false, false);
+      toggleLeftNav(false);
       setWorkspaceView("workspace");
       setLabelsVisible(tourBackup.showLabels !== false);
       setZonesVisible(tourBackup.showZones !== false);
@@ -4371,6 +4444,7 @@
   function closeTour() {
     clearTourTimers();
     tourTargetsOverride = null;
+    toggleLeftNav(false);
     closeTourPopupOnly();
     tourActive = false;
     $("appShell")?.classList.remove("tour-active");
@@ -4468,6 +4542,9 @@
     loadStoredFields();
     initMap();
     bindEvents();
+    if (window.innerWidth <= 900) {
+      toggleSidebar(true);
+    }
     selectField(state.activeFieldId, true);
     initTour();
     setTimeout(() => {
